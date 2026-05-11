@@ -1,0 +1,71 @@
+name: Test auto mode with non-PR event (no deployment)
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "42"
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          source-dir: .
+          pages-base-url: "https://example.github.io"
+          pages-base-path: ""
+          comment: "false"
+          git-config-name: "Test Bot"
+          git-config-email: "testbot@example.com"
+          token: ${{ github.token }}
+
+      - name: Assert deployment-action is none for non-PR event
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert pages-base-url output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "actual pages-base-url: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected pages-base-url to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "actual preview-url-path: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected preview-url-path to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url contains pr-number
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "actual preview-url: $ACTUAL"
+          if [[ "$ACTUAL" != *"42"* ]]; then
+            echo "FAIL: expected preview-url to contain PR number '42'"
+            exit 1
+          fi
+          echo "PASS"
