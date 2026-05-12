@@ -1,0 +1,71 @@
+name: Test deploy with git config inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REF: refs/pull/42/merge
+      GITHUB_HEAD_REF: feature-branch
+      GITHUB_BASE_REF: main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: deploy
+          pr-number: "42"
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          source-dir: .
+          comment: "false"
+          git-config-name: "Test Bot"
+          git-config-email: "testbot@example.com"
+          deploy-commit-message: "Deploy preview for PR 42"
+        continue-on-error: true
+
+      - name: Assert deployment-action output is deploy
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "deploy" ]; then
+            echo "FAIL: expected 'deploy', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "actual preview-url-path: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected preview-url-path to be non-empty"
+            exit 1
+          fi
+          echo "PASS: preview-url-path=$ACTUAL"
+
+      - name: Assert action-version output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.action-version }}
+        run: |
+          echo "actual action-version: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected action-version to be non-empty"
+            exit 1
+          fi
+          echo "PASS: action-version=$ACTUAL"
+
+      - name: Assert action-start-timestamp output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.action-start-timestamp }}
+        run: |
+          echo "actual action-start-timestamp: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected action-start-timestamp to be non-empty"
+            exit 1
+          fi
+          echo "PASS: action-start-timestamp=$ACTUAL"

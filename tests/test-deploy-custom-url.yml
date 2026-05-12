@@ -1,0 +1,77 @@
+name: Test deploy with custom pages URL and path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REF: refs/pull/99/merge
+      GITHUB_HEAD_REF: my-feature
+      GITHUB_BASE_REF: main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: deploy
+          pr-number: "99"
+          preview-branch: gh-pages
+          umbrella-dir: previews
+          pages-base-url: "https://myorg.github.io"
+          pages-base-path: "/myrepo"
+          source-dir: .
+          comment: "false"
+          git-config-name: "Preview Bot"
+          git-config-email: "preview@example.com"
+          deploy-commit-message: "Deploy preview for PR 99 🛫"
+        continue-on-error: true
+
+      - name: Assert deployment-action output is deploy
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "deploy" ]; then
+            echo "FAIL: expected 'deploy', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert pages-base-url output contains expected value
+        env:
+          ACTUAL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "actual pages-base-url: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected pages-base-url to be non-empty"
+            exit 1
+          fi
+          echo "PASS: pages-base-url=$ACTUAL"
+
+      - name: Assert preview-url-path contains PR number
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "actual preview-url-path: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected preview-url-path to be non-empty"
+            exit 1
+          fi
+          if [[ "$ACTUAL" != *"99"* ]]; then
+            echo "FAIL: expected preview-url-path to contain PR number '99', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS: preview-url-path=$ACTUAL"
+
+      - name: Assert preview-url is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "actual preview-url: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected preview-url to be non-empty"
+            exit 1
+          fi
+          echo "PASS: preview-url=$ACTUAL"

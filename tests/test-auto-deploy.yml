@@ -1,0 +1,58 @@
+name: Test auto action on pull_request opened
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REF: refs/pull/5/merge
+      GITHUB_HEAD_REF: feature-branch
+      GITHUB_BASE_REF: main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "5"
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          pages-base-url: "https://example.github.io"
+          pages-base-path: ""
+          comment: "false"
+        continue-on-error: true
+
+      - name: Assert pages-base-url output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "actual pages-base-url: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected pages-base-url to be non-empty"
+            exit 1
+          fi
+          echo "PASS: pages-base-url=$ACTUAL"
+
+      - name: Assert action-version output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.action-version }}
+        run: |
+          echo "actual action-version: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected action-version to be non-empty"
+            exit 1
+          fi
+          echo "PASS: action-version=$ACTUAL"
+
+      - name: Assert action-start-time output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.action-start-time }}
+        run: |
+          echo "actual action-start-time: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected action-start-time to be non-empty"
+            exit 1
+          fi
+          echo "PASS: action-start-time=$ACTUAL"

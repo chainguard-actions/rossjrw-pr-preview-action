@@ -1,0 +1,46 @@
+name: Test remove action
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: pull_request
+      GITHUB_REF: refs/pull/10/merge
+      GITHUB_HEAD_REF: feature-branch
+      GITHUB_BASE_REF: main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: remove
+          pr-number: "10"
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          comment: "false"
+          remove-commit-message: "Remove preview for PR 10"
+        continue-on-error: true
+
+      - name: Assert deployment-action output is remove
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "remove" ]; then
+            echo "FAIL: expected 'remove', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "actual preview-url-path: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected preview-url-path to be non-empty"
+            exit 1
+          fi
+          echo "PASS: preview-url-path=$ACTUAL"
