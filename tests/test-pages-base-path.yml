@@ -1,0 +1,57 @@
+name: Test pages-base-path input
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "7"
+          umbrella-dir: docs/pr-preview
+          pages-base-url: myorg.github.io
+          pages-base-path: docs
+          comment: "false"
+
+      - name: Assert deployment-action is none (push event)
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "none" ]; then
+            echo "FAIL: expected 'none' for push event in auto mode, got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path strips pages-base-path prefix
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "actual preview-url-path: $ACTUAL"
+          # With pages-base-path=docs and umbrella-dir=docs/pr-preview,
+          # the preview-url-path should be pr-preview/pr-7 (docs prefix stripped)
+          if [[ "$ACTUAL" != "pr-preview/pr-7" ]]; then
+            echo "FAIL: expected 'pr-preview/pr-7', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url does not double-include base-path
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "actual preview-url: $ACTUAL"
+          if [[ "$ACTUAL" != "https://myorg.github.io/pr-preview/pr-7/" ]]; then
+            echo "FAIL: expected 'https://myorg.github.io/pr-preview/pr-7/', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"

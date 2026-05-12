@@ -1,0 +1,71 @@
+name: Test auto action on pull_request opened event (deploy)
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create fake pull_request opened event payload
+        run: |
+          mkdir -p /tmp/fake-event
+          cat > /tmp/fake-event/event.json <<'EOF'
+          {
+            "action": "opened",
+            "number": 3,
+            "pull_request": {
+              "number": 3,
+              "state": "open"
+            }
+          }
+          EOF
+
+      - name: Run setup step only (via explicit action=deploy, comment=false)
+        id: action
+        uses: .
+        continue-on-error: true
+        env:
+          GITHUB_EVENT_NAME: pull_request
+          GITHUB_EVENT_PATH: /tmp/fake-event/event.json
+        with:
+          action: auto
+          pr-number: "3"
+          umbrella-dir: pr-preview
+          pages-base-url: myorg.github.io
+          comment: "false"
+          preview-branch: gh-pages
+
+      - name: Assert deployment-action is deploy
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "deploy" ]; then
+            echo "FAIL: expected 'deploy' for pull_request opened event, got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path contains pr-3
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "actual preview-url-path: $ACTUAL"
+          if [[ "$ACTUAL" != *"pr-3"* ]]; then
+            echo "FAIL: expected preview-url-path to contain 'pr-3'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url is well-formed
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "actual preview-url: $ACTUAL"
+          if [[ "$ACTUAL" != "https://myorg.github.io/pr-preview/pr-3/" ]]; then
+            echo "FAIL: expected 'https://myorg.github.io/pr-preview/pr-3/', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"

@@ -1,0 +1,58 @@
+name: Test auto action on pull_request closed event (remove)
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create fake pull_request closed event payload
+        run: |
+          mkdir -p /tmp/fake-event
+          cat > /tmp/fake-event/event.json <<'EOF'
+          {
+            "action": "closed",
+            "number": 5,
+            "pull_request": {
+              "number": 5,
+              "state": "closed"
+            }
+          }
+          EOF
+
+      - id: action
+        uses: .
+        env:
+          GITHUB_EVENT_NAME: pull_request
+          GITHUB_EVENT_PATH: /tmp/fake-event/event.json
+        with:
+          action: auto
+          pr-number: "5"
+          umbrella-dir: pr-preview
+          pages-base-url: myorg.github.io
+          comment: "false"
+          preview-branch: gh-pages
+
+      - name: Assert deployment-action is remove
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "remove" ]; then
+            echo "FAIL: expected 'remove' for pull_request closed event, got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path contains pr-5
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "actual preview-url-path: $ACTUAL"
+          if [[ "$ACTUAL" != *"pr-5"* ]]; then
+            echo "FAIL: expected preview-url-path to contain 'pr-5'"
+            exit 1
+          fi
+          echo "PASS"
