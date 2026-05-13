@@ -1,0 +1,60 @@
+name: Test git-config-name and git-config-email inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "99"
+          pages-base-url: "myorg.github.io"
+          umbrella-dir: pr-preview
+          preview-branch: gh-pages
+          source-dir: .
+          comment: "false"
+          wait-for-pages-deployment: "false"
+          git-config-name: "Preview Bot"
+          git-config-email: "preview-bot@example.com"
+        env:
+          GITHUB_EVENT_NAME: push
+
+      - name: Assert deployment-action is none (push event skips deploy)
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url contains pr-number
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "actual preview-url: $ACTUAL"
+          if [[ "$ACTUAL" != *"pr-99"* ]]; then
+            echo "FAIL: expected preview-url to contain 'pr-99'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert pages-base-url output
+        env:
+          ACTUAL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "actual pages-base-url: $ACTUAL"
+          if [ "$ACTUAL" != "myorg.github.io" ]; then
+            echo "FAIL: expected 'myorg.github.io' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"

@@ -1,0 +1,61 @@
+name: Test custom commit messages and deploy-repository inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "123"
+          pages-base-url: "myorg.github.io"
+          umbrella-dir: pr-preview
+          preview-branch: gh-pages
+          source-dir: .
+          comment: "false"
+          wait-for-pages-deployment: "false"
+          deploy-repository: "myorg/myrepo"
+          deploy-commit-message: "Custom deploy message for PR 123"
+          remove-commit-message: "Custom remove message for PR 123"
+        env:
+          GITHUB_EVENT_NAME: push
+
+      - name: Assert deployment-action is none (push event)
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url contains pr-number
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "actual preview-url: $ACTUAL"
+          if [[ "$ACTUAL" != *"pr-123"* ]]; then
+            echo "FAIL: expected preview-url to contain 'pr-123'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert action-start-time is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.action-start-time }}
+        run: |
+          echo "actual action-start-time: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected action-start-time to be non-empty"
+            exit 1
+          fi
+          echo "PASS"

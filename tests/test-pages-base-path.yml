@@ -1,0 +1,62 @@
+name: Test pages-base-path input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: push
+      GITHUB_REF: refs/heads/main
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "7"
+          pages-base-url: "myorg.github.io"
+          pages-base-path: "pr-preview"
+          umbrella-dir: pr-preview
+          preview-branch: gh-pages
+          source-dir: .
+          comment: "false"
+          wait-for-pages-deployment: "false"
+        env:
+          GITHUB_EVENT_NAME: push
+
+      - name: Assert deployment-action is none
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "actual deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path strips pages-base-path prefix
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "actual preview-url-path: $ACTUAL"
+          # With pages-base-path=pr-preview and umbrella-dir=pr-preview,
+          # preview_file_path = pr-preview/pr-7
+          # preview_url_path should strip the pr-preview prefix => pr-7
+          if [[ "$ACTUAL" != "pr-7" ]]; then
+            echo "FAIL: expected 'pr-7' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url is well-formed
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "actual preview-url: $ACTUAL"
+          if [[ "$ACTUAL" != "https://myorg.github.io/pr-7/" ]]; then
+            echo "FAIL: expected 'https://myorg.github.io/pr-7/' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
