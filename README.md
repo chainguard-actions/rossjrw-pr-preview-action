@@ -9,10 +9,10 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
-| v1.7.1 | [`v1.7.1`](https://github.com/chainguard-actions/rossjrw--pr-preview-action/tree/v1.7.1) | — |
-| v1.7.2 | [`v1.7.2`](https://github.com/chainguard-actions/rossjrw--pr-preview-action/tree/v1.7.2) | — |
-| v1.7.3 | [`v1.7.3`](https://github.com/chainguard-actions/rossjrw--pr-preview-action/tree/v1.7.3) | — |
-| v1.8.1 | [`v1.8.1`](https://github.com/chainguard-actions/rossjrw--pr-preview-action/tree/v1.8.1) | — |
+| v1.7.1 | [`v1.7.1`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.7.1) | — |
+| v1.7.2 | [`v1.7.2`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.7.2) | — |
+| v1.7.3 | [`v1.7.3`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.7.3) | — |
+| v1.8.1 | [`v1.8.1`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.8.1) | — |
 
 ## Privacy
 
