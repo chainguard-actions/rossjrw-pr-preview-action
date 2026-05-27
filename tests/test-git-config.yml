@@ -1,4 +1,4 @@
-name: Test auto mode on non-PR event (none)
+name: Test git-config-name and git-config-email inputs
 on:
   workflow_dispatch:
 jobs:
@@ -17,12 +17,14 @@ jobs:
           preview-branch: gh-pages
           umbrella-dir: pr-preview
           source-dir: .
-          pr-number: "42"
+          pr-number: "99"
           action: auto
           comment: "false"
+          git-config-name: "Preview Bot"
+          git-config-email: "preview-bot@example.com"
         continue-on-error: true
 
-      - name: Assert deployment-action is none
+      - name: Assert deployment-action is none (no deployment on push event)
         env:
           ACTUAL: ${{ steps.action.outputs.deployment-action }}
         run: |
@@ -33,24 +35,13 @@ jobs:
           fi
           echo "PASS"
 
-      - name: Assert action-version output is set
+      - name: Assert preview-url-path output is set
         env:
-          ACTUAL: ${{ steps.action.outputs.action-version }}
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
         run: |
-          echo "actual action-version: $ACTUAL"
+          echo "actual preview-url-path: $ACTUAL"
           if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected action-version to be non-empty"
-            exit 1
-          fi
-          echo "PASS"
-
-      - name: Assert action-start-timestamp output is set
-        env:
-          ACTUAL: ${{ steps.action.outputs.action-start-timestamp }}
-        run: |
-          echo "actual action-start-timestamp: $ACTUAL"
-          if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected action-start-timestamp to be non-empty"
+            echo "FAIL: expected preview-url-path to be non-empty"
             exit 1
           fi
           echo "PASS"

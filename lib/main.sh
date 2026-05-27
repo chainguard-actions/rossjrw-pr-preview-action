@@ -35,34 +35,35 @@ action_version=$("$GITHUB_ACTION_PATH/lib/find-current-git-tag.sh" -p "$action_r
 action_start_timestamp=$(date '+%s')
 action_start_time=$(date '+%Y-%m-%d %H:%M %Z')
 
-# Helper to strip newlines/carriage-returns from a value before writing to
-# $GITHUB_ENV or $GITHUB_OUTPUT to prevent newline-injection attacks.
-safe() { printf '%s' "$1" | tr -d '\n\r'; }
+# Sanitize a value by stripping newline characters before writing to GITHUB_ENV/GITHUB_OUTPUT
+sanitize() {
+    printf '%s' "$1" | tr -d '\n\r'
+}
 
 # Export variables for later use by this action
 {
     echo "empty_dir_path=$(mktemp -d)"
-    echo "deployment_action=$(safe "$deployment_action")"
+    echo "deployment_action=$(sanitize "$deployment_action")"
 
-    echo "preview_file_path=$(safe "$preview_file_path")"
-    echo "pages_base_url=$(safe "$pages_base_url")"
-    echo "preview_url_path=$(safe "$preview_url_path")"
-    echo "preview_url=https://$(safe "$pages_base_url")/$(safe "$preview_url_path")/"
+    echo "preview_file_path=$(sanitize "$preview_file_path")"
+    echo "pages_base_url=$(sanitize "$pages_base_url")"
+    echo "preview_url_path=$(sanitize "$preview_url_path")"
+    echo "preview_url=https://$(sanitize "$pages_base_url")/$(sanitize "$preview_url_path")/"
 
-    echo "action_repository=$(safe "$action_repository")"
-    echo "action_version=$(safe "$action_version")"
-    echo "action_start_time=$(safe "$action_start_time")"
+    echo "action_repository=$(sanitize "$action_repository")"
+    echo "action_version=$(sanitize "$action_version")"
+    echo "action_start_time=$(sanitize "$action_start_time")"
 } >> "$GITHUB_ENV"
 
 # Export variables for use by later actions in user workflow
 {
-    echo "deployment_action=$(safe "$deployment_action")"
+    echo "deployment_action=$(sanitize "$deployment_action")"
 
-    echo "pages_base_url=$(safe "$pages_base_url")"
-    echo "preview_url_path=$(safe "$preview_url_path")"
-    echo "preview_url=https://$(safe "$pages_base_url")/$(safe "$preview_url_path")/"
+    echo "pages_base_url=$(sanitize "$pages_base_url")"
+    echo "preview_url_path=$(sanitize "$preview_url_path")"
+    echo "preview_url=https://$(sanitize "$pages_base_url")/$(sanitize "$preview_url_path")/"
 
-    echo "action_version=$(safe "$action_version")"
-    echo "action_start_timestamp=$(safe "$action_start_timestamp")"
-    echo "action_start_time=$(safe "$action_start_time")"
+    echo "action_version=$(sanitize "$action_version")"
+    echo "action_start_timestamp=$(sanitize "$action_start_timestamp")"
+    echo "action_start_time=$(sanitize "$action_start_time")"
 } >> "$GITHUB_OUTPUT"

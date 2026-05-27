@@ -204,17 +204,16 @@ runs:
               QR_CODE: ${{ inputs.qr-code }}
           run: |
               SAFE_PREVIEW_BRANCH=$(printf '%s' "$PREVIEW_BRANCH" | tr -d '\n\r')
-              SAFE_SERVER_URL=$(printf '%s' "$SERVER_URL" | tr -d '\n\r')
               SAFE_DEPLOY_REPOSITORY=$(printf '%s' "$DEPLOY_REPOSITORY" | tr -d '\n\r')
               SAFE_QR_CODE=$(printf '%s' "$QR_CODE" | tr -d '\n\r')
               CONTENT=$($GITHUB_ACTION_PATH/lib/generate-comment.sh \
-                "$action_repository" \
-                "$action_version" \
-                "$preview_url" \
+                "${{ env.action_repository }}" \
+                "${{ env.action_version }}" \
+                "${{ env.preview_url }}" \
                 "$SAFE_PREVIEW_BRANCH" \
-                "$SAFE_SERVER_URL" \
+                "$SERVER_URL" \
                 "$SAFE_DEPLOY_REPOSITORY" \
-                "$action_start_time" \
+                "${{ env.action_start_time }}" \
                 "deploy" \
                 "$SAFE_QR_CODE")
               EOF_DELIMITER="EOF_$(openssl rand -hex 16)"
@@ -289,18 +288,17 @@ runs:
               DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
           run: |
               SAFE_PREVIEW_BRANCH=$(printf '%s' "$PREVIEW_BRANCH" | tr -d '\n\r')
-              SAFE_SERVER_URL=$(printf '%s' "$SERVER_URL" | tr -d '\n\r')
               SAFE_DEPLOY_REPOSITORY=$(printf '%s' "$DEPLOY_REPOSITORY" | tr -d '\n\r')
               CONTENT=$($GITHUB_ACTION_PATH/lib/generate-comment.sh \
-                "$action_repository" \
-                "$action_version" \
-                "$preview_url" \
+                "${{ env.action_repository }}" \
+                "${{ env.action_version }}" \
+                "${{ env.preview_url }}" \
                 "$SAFE_PREVIEW_BRANCH" \
-                "$SAFE_SERVER_URL" \
+                "$SERVER_URL" \
                 "$SAFE_DEPLOY_REPOSITORY" \
-                "$action_start_time" \
+                "${{ env.action_start_time }}" \
                 "remove" \
-                "$qr_code_provider")
+                "${{ env.qr_code_provider }}")
               EOF_DELIMITER="EOF_$(openssl rand -hex 16)"
               {
                 echo "content<<${EOF_DELIMITER}"

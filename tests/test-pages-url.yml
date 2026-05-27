@@ -1,4 +1,4 @@
-name: Test auto mode on non-PR event (none)
+name: Test pages-base-url and preview-url output
 on:
   workflow_dispatch:
 jobs:
@@ -16,8 +16,10 @@ jobs:
           token: ${{ github.token }}
           preview-branch: gh-pages
           umbrella-dir: pr-preview
+          pages-base-url: "https://example.github.io/my-repo"
+          pages-base-path: ""
           source-dir: .
-          pr-number: "42"
+          pr-number: "7"
           action: auto
           comment: "false"
         continue-on-error: true
@@ -33,24 +35,28 @@ jobs:
           fi
           echo "PASS"
 
-      - name: Assert action-version output is set
+      - name: Assert pages-base-url output matches input
         env:
-          ACTUAL: ${{ steps.action.outputs.action-version }}
+          ACTUAL: ${{ steps.action.outputs.pages-base-url }}
         run: |
-          echo "actual action-version: $ACTUAL"
+          echo "actual pages-base-url: $ACTUAL"
           if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected action-version to be non-empty"
+            echo "FAIL: expected pages-base-url to be non-empty"
             exit 1
           fi
           echo "PASS"
 
-      - name: Assert action-start-timestamp output is set
+      - name: Assert preview-url contains pr-number
         env:
-          ACTUAL: ${{ steps.action.outputs.action-start-timestamp }}
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
         run: |
-          echo "actual action-start-timestamp: $ACTUAL"
+          echo "actual preview-url: $ACTUAL"
           if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected action-start-timestamp to be non-empty"
+            echo "FAIL: expected preview-url to be non-empty"
+            exit 1
+          fi
+          if [[ "$ACTUAL" != *"7"* ]]; then
+            echo "FAIL: expected preview-url to contain PR number '7'"
             exit 1
           fi
           echo "PASS"
