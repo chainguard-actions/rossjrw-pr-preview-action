@@ -12,7 +12,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v1.7.1 | [`v1.7.1`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.7.1) | — |
 | v1.7.2 | [`v1.7.2`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.7.2) | — |
 | v1.7.3 | [`v1.7.3`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.7.3) | — |
-| v1.8.1 | [`v1.8.1`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.8.1) | — |
+| v1.8.1 | [`v1.8.1`](https://github.com/chainguard-actions/rossjrw-pr-preview-action/tree/v1.8.1) | [`ffa7509`](https://github.com/rossjrw/pr-preview-action/commit/ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9) |
 
 ## Privacy
 
