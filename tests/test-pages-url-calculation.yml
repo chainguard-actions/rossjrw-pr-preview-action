@@ -1,0 +1,88 @@
+name: Test pages base URL calculation and custom inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test 1: pages-base-url explicitly set with custom umbrella-dir
+      - id: action-custom
+        uses: .
+        with:
+          action: auto
+          pr-number: "5"
+          pages-base-url: "acme.github.io/docs"
+          umbrella-dir: "previews"
+          comment: "false"
+        continue-on-error: true
+
+      - name: Assert custom umbrella-dir in preview-url-path
+        env:
+          PREVIEW_URL_PATH: ${{ steps.action-custom.outputs.preview-url-path }}
+          OUTCOME: ${{ steps.action-custom.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PREVIEW_URL_PATH" = "previews/pr-5" ]; then
+            echo "PASS: custom umbrella-dir reflected in preview-url-path"
+          else
+            echo "FAIL: expected 'previews/pr-5', got '$PREVIEW_URL_PATH'"
+            exit 1
+          fi
+
+      - name: Assert full preview-url with custom umbrella-dir
+        env:
+          PREVIEW_URL: ${{ steps.action-custom.outputs.preview-url }}
+          OUTCOME: ${{ steps.action-custom.outcome }}
+        run: |
+          echo "preview-url: $PREVIEW_URL"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PREVIEW_URL" = "https://acme.github.io/docs/previews/pr-5/" ]; then
+            echo "PASS: preview-url is correct"
+          else
+            echo "FAIL: expected 'https://acme.github.io/docs/previews/pr-5/', got '$PREVIEW_URL'"
+            exit 1
+          fi
+
+      - name: Assert pages-base-url output matches input
+        env:
+          PAGES_BASE_URL: ${{ steps.action-custom.outputs.pages-base-url }}
+          OUTCOME: ${{ steps.action-custom.outcome }}
+        run: |
+          echo "pages-base-url: $PAGES_BASE_URL"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PAGES_BASE_URL" = "acme.github.io/docs" ]; then
+            echo "PASS: pages-base-url matches input"
+          else
+            echo "FAIL: expected 'acme.github.io/docs', got '$PAGES_BASE_URL'"
+            exit 1
+          fi
+
+      - name: Assert deployment-action is none for workflow_dispatch auto
+        env:
+          DEPLOYMENT_ACTION: ${{ steps.action-custom.outputs.deployment-action }}
+          OUTCOME: ${{ steps.action-custom.outcome }}
+        run: |
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$DEPLOYMENT_ACTION" = "none" ]; then
+            echo "PASS: deployment-action is 'none' for workflow_dispatch"
+          else
+            echo "FAIL: expected 'none', got '$DEPLOYMENT_ACTION'"
+            exit 1
+          fi

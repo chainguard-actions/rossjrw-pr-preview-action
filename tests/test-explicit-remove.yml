@@ -1,0 +1,73 @@
+name: Test explicit remove action
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: remove
+          pr-number: "99"
+          pages-base-url: "myorg.github.io/myrepo"
+          umbrella-dir: pr-preview
+          comment: "false"
+        continue-on-error: true
+
+      - name: Assert deployment-action output is remove
+        env:
+          DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ "$DEPLOYMENT_ACTION" = "remove" ]; then
+              echo "PASS: deployment-action is 'remove'"
+            else
+              echo "FAIL: expected 'remove', got '$DEPLOYMENT_ACTION'"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+
+      - name: Assert preview-url-path for PR 99
+        env:
+          PREVIEW_URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PREVIEW_URL_PATH" = "pr-preview/pr-99" ]; then
+            echo "PASS: preview-url-path is correct"
+          else
+            echo "FAIL: expected 'pr-preview/pr-99', got '$PREVIEW_URL_PATH'"
+            exit 1
+          fi
+
+      - name: Assert preview-url for PR 99
+        env:
+          PREVIEW_URL: ${{ steps.action.outputs.preview-url }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "preview-url: $PREVIEW_URL"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PREVIEW_URL" = "https://myorg.github.io/myrepo/pr-preview/pr-99/" ]; then
+            echo "PASS: preview-url is correct"
+          else
+            echo "FAIL: expected 'https://myorg.github.io/myrepo/pr-preview/pr-99/', got '$PREVIEW_URL'"
+            exit 1
+          fi

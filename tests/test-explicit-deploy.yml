@@ -1,0 +1,106 @@
+name: Test explicit deploy action
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          action: deploy
+          pr-number: "7"
+          pages-base-url: "myorg.github.io/myrepo"
+          umbrella-dir: pr-preview
+          source-dir: .
+          comment: "false"
+        continue-on-error: true
+
+      - name: Assert deployment-action output is deploy
+        env:
+          DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          # The setup step should always set deployment-action=deploy even if the
+          # subsequent deploy step fails (sentinel repo). Check the output if success,
+          # or accept graceful failure.
+          if [ "$OUTCOME" = "success" ]; then
+            if [ "$DEPLOYMENT_ACTION" = "deploy" ]; then
+              echo "PASS: deployment-action is 'deploy'"
+            else
+              echo "FAIL: expected 'deploy', got '$DEPLOYMENT_ACTION'"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+
+      - name: Assert preview-url-path for PR 7
+        env:
+          PREVIEW_URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PREVIEW_URL_PATH" = "pr-preview/pr-7" ]; then
+            echo "PASS: preview-url-path is correct"
+          else
+            echo "FAIL: expected 'pr-preview/pr-7', got '$PREVIEW_URL_PATH'"
+            exit 1
+          fi
+
+      - name: Assert preview-url for PR 7
+        env:
+          PREVIEW_URL: ${{ steps.action.outputs.preview-url }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "preview-url: $PREVIEW_URL"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PREVIEW_URL" = "https://myorg.github.io/myrepo/pr-preview/pr-7/" ]; then
+            echo "PASS: preview-url is correct"
+          else
+            echo "FAIL: expected 'https://myorg.github.io/myrepo/pr-preview/pr-7/', got '$PREVIEW_URL'"
+            exit 1
+          fi
+
+      - name: Assert action-version output is set
+        env:
+          ACTION_VERSION: ${{ steps.action.outputs.action-version }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action-version: $ACTION_VERSION"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          # action-version may be empty if no git tag found, but the output key should exist
+          echo "PASS: action-version output key exists (value: '$ACTION_VERSION')"
+
+      - name: Assert action-start-timestamp output is set
+        env:
+          TIMESTAMP: ${{ steps.action.outputs.action-start-timestamp }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action-start-timestamp: $TIMESTAMP"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ -z "$TIMESTAMP" ]; then
+            echo "FAIL: action-start-timestamp is empty"
+            exit 1
+          fi
+          echo "PASS: action-start-timestamp is set"

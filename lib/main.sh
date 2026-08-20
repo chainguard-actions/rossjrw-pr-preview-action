@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # shellcheck source-path=..
 
-# Sanitize a value by stripping newline and carriage-return characters.
-# This prevents newline injection into $GITHUB_ENV / $GITHUB_OUTPUT.
-sanitize() {
-    printf '%s' "$1" | tr -d '\n\r'
-}
-
 source "$GITHUB_ACTION_PATH/lib/calculate-pages-base-url.sh"
 source "$GITHUB_ACTION_PATH/lib/remove-prefix-path.sh"
 source "$GITHUB_ACTION_PATH/lib/determine-auto-action.sh"
 
 declare deployment_action pr_number deployment_repository pages_base_url pages_base_path umbrella_path github_action_ref github_action_repository deprecated_custom_url
+
+# Helper: strip newlines/carriage-returns from a value before writing to
+# $GITHUB_ENV or $GITHUB_OUTPUT to prevent environment-variable injection.
+sanitize() {
+    printf '%s' "$1" | tr -d '\n\r'
+}
 
 # Deprecation of custom-url in favour of pages-base-url
 if [ -z "$pages_base_url" ] && [ -n "$deprecated_custom_url" ]; then
@@ -41,7 +41,9 @@ action_version=$("$GITHUB_ACTION_PATH/lib/find-current-git-tag.sh" -p "$github_a
 action_start_timestamp=$(date '+%s')
 action_start_time=$(date '+%Y-%m-%d %H:%M %Z')
 
-# Sanitize all attacker-controlled values before writing to $GITHUB_ENV / $GITHUB_OUTPUT
+# Sanitize all values derived from user-controlled inputs before writing to
+# $GITHUB_ENV or $GITHUB_OUTPUT to prevent newline-based injection attacks.
+safe_empty_dir_path=$(sanitize "$(mktemp -d)")
 safe_deployment_action=$(sanitize "$deployment_action")
 safe_preview_file_path=$(sanitize "$preview_file_path")
 safe_pages_base_url=$(sanitize "$pages_base_url")
@@ -54,7 +56,7 @@ safe_action_start_timestamp=$(sanitize "$action_start_timestamp")
 
 # Export variables for later use by this action
 {
-    echo "empty_dir_path=$(mktemp -d)"
+    echo "empty_dir_path=$safe_empty_dir_path"
     echo "deployment_action=$safe_deployment_action"
 
     echo "preview_file_path=$safe_preview_file_path"

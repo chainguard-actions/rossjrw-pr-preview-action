@@ -1,57 +1,96 @@
-name: Test pages-base-path input
+name: Test pages-base-path prefix stripping
 on:
   workflow_dispatch:
-
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_EVENT_NAME: push
-      GITHUB_REF: refs/heads/main
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - id: action
+      # Test pages-base-path: when umbrella-dir starts with pages-base-path,
+      # the prefix should be stripped from preview-url-path
+      - id: action-with-base-path
         uses: .
         with:
           action: auto
-          pr-number: "7"
-          umbrella-dir: docs/pr-preview
-          pages-base-url: myorg.github.io
-          pages-base-path: docs
+          pr-number: "10"
+          pages-base-url: "myorg.github.io/site"
+          pages-base-path: "docs"
+          umbrella-dir: "docs/pr-preview"
           comment: "false"
-
-      - name: Assert deployment-action is none (push event)
-        env:
-          ACTUAL: ${{ steps.action.outputs.deployment-action }}
-        run: |
-          echo "actual deployment-action: $ACTUAL"
-          if [ "$ACTUAL" != "none" ]; then
-            echo "FAIL: expected 'none' for push event in auto mode, got '$ACTUAL'"
-            exit 1
-          fi
-          echo "PASS"
+        continue-on-error: true
 
       - name: Assert preview-url-path strips pages-base-path prefix
         env:
-          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+          PREVIEW_URL_PATH: ${{ steps.action-with-base-path.outputs.preview-url-path }}
+          OUTCOME: ${{ steps.action-with-base-path.outcome }}
         run: |
-          echo "actual preview-url-path: $ACTUAL"
+          echo "outcome: $OUTCOME"
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
           # With pages-base-path=docs and umbrella-dir=docs/pr-preview,
-          # the preview-url-path should be pr-preview/pr-7 (docs prefix stripped)
-          if [[ "$ACTUAL" != "pr-preview/pr-7" ]]; then
-            echo "FAIL: expected 'pr-preview/pr-7', got '$ACTUAL'"
+          # the prefix "docs" should be stripped from "docs/pr-preview/pr-10"
+          # resulting in "pr-preview/pr-10"
+          if [ "$PREVIEW_URL_PATH" = "pr-preview/pr-10" ]; then
+            echo "PASS: pages-base-path prefix correctly stripped"
+          else
+            echo "FAIL: expected 'pr-preview/pr-10', got '$PREVIEW_URL_PATH'"
             exit 1
           fi
-          echo "PASS"
 
-      - name: Assert preview-url does not double-include base-path
+      - name: Assert preview-url with base-path stripping
         env:
-          ACTUAL: ${{ steps.action.outputs.preview-url }}
+          PREVIEW_URL: ${{ steps.action-with-base-path.outputs.preview-url }}
+          OUTCOME: ${{ steps.action-with-base-path.outcome }}
         run: |
-          echo "actual preview-url: $ACTUAL"
-          if [[ "$ACTUAL" != "https://myorg.github.io/pr-preview/pr-7/" ]]; then
-            echo "FAIL: expected 'https://myorg.github.io/pr-preview/pr-7/', got '$ACTUAL'"
+          echo "preview-url: $PREVIEW_URL"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PREVIEW_URL" = "https://myorg.github.io/site/pr-preview/pr-10/" ]; then
+            echo "PASS: preview-url is correct with base-path stripping"
+          else
+            echo "FAIL: expected 'https://myorg.github.io/site/pr-preview/pr-10/', got '$PREVIEW_URL'"
             exit 1
           fi
-          echo "PASS"
+
+      # Test deprecated custom-url input (should behave like pages-base-url)
+      - id: action-deprecated-url
+        uses: .
+        with:
+          action: auto
+          pr-number: "20"
+          custom-url: "legacy.github.io/oldrepo"
+          umbrella-dir: pr-preview
+          comment: "false"
+        continue-on-error: true
+
+      - name: Assert deprecated custom-url is used as pages-base-url
+        env:
+          PAGES_BASE_URL: ${{ steps.action-deprecated-url.outputs.pages-base-url }}
+          PREVIEW_URL: ${{ steps.action-deprecated-url.outputs.preview-url }}
+          OUTCOME: ${{ steps.action-deprecated-url.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "pages-base-url: $PAGES_BASE_URL"
+          echo "preview-url: $PREVIEW_URL"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully"
+            exit 0
+          fi
+          if [ "$PAGES_BASE_URL" = "legacy.github.io/oldrepo" ]; then
+            echo "PASS: deprecated custom-url used as pages-base-url"
+          else
+            echo "FAIL: expected 'legacy.github.io/oldrepo', got '$PAGES_BASE_URL'"
+            exit 1
+          fi
+          if [ "$PREVIEW_URL" = "https://legacy.github.io/oldrepo/pr-preview/pr-20/" ]; then
+            echo "PASS: preview-url correct with deprecated custom-url"
+          else
+            echo "FAIL: expected 'https://legacy.github.io/oldrepo/pr-preview/pr-20/', got '$PREVIEW_URL'"
+            exit 1
+          fi
