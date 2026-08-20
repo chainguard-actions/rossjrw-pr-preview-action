@@ -1,0 +1,108 @@
+name: Test auto action with non-PR event (none)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up local git mirror to satisfy find-current-git-tag.sh
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Create a tag so git describe works
+          git tag v1.0.0-test 2>/dev/null || true
+          # Create a bare clone of the current repo
+          MIRROR_DIR="$GITHUB_WORKSPACE/.git-mirror"
+          rm -rf "$MIRROR_DIR"
+          git clone --bare . "$MIRROR_DIR"
+          # Redirect the exact sentinel URL to our local mirror.
+          # find-current-git-tag.sh clones https://github.com/$github_action_repository
+          # where github_action_repository = github.action_repository || github.repository
+          # Under act with uses: ., this equals GITHUB_REPOSITORY (the sentinel).
+          git config --global url."file://$MIRROR_DIR".insteadOf "https://github.com/$GITHUB_REPOSITORY"
+
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "42"
+          pages-base-url: "myorg.github.io/myrepo"
+          umbrella-dir: pr-preview
+          comment: "false"
+        # Under workflow_dispatch (not pull_request), auto resolves to "none"
+        # No deployment steps run, so the action should succeed
+
+      - name: Assert deployment-action is none
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert pages-base-url output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "pages-base-url: $ACTUAL"
+          if [ "$ACTUAL" != "myorg.github.io/myrepo" ]; then
+            echo "FAIL: expected 'myorg.github.io/myrepo' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "preview-url-path: $ACTUAL"
+          if [ "$ACTUAL" != "pr-preview/pr-42" ]; then
+            echo "FAIL: expected 'pr-preview/pr-42' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "preview-url: $ACTUAL"
+          if [ "$ACTUAL" != "https://myorg.github.io/myrepo/pr-preview/pr-42/" ]; then
+            echo "FAIL: expected 'https://myorg.github.io/myrepo/pr-preview/pr-42/' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert action-version output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.action-version }}
+        run: |
+          echo "action-version: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: action-version is empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert action-start-timestamp output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.action-start-timestamp }}
+        run: |
+          echo "action-start-timestamp: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: action-start-timestamp is empty"
+            exit 1
+          fi
+          # Should be a Unix timestamp (numeric)
+          if ! echo "$ACTUAL" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: action-start-timestamp is not numeric: '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"

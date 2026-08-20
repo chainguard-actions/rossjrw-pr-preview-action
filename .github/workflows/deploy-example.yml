@@ -1,0 +1,20 @@
+name: Deploy example site
+on:
+    push:
+        branches:
+            - main
+permissions: {}
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+            - name: Deploy
+              uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4
+              with:
+                  branch: gh-pages
+                  folder: test
+                  clean-exclude: pr-preview/

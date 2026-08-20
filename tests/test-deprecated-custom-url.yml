@@ -1,0 +1,69 @@
+name: Test deprecated custom-url input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up local git mirror to satisfy find-current-git-tag.sh
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Create a tag so git describe works
+          git tag v1.0.0-test 2>/dev/null || true
+          # Create a bare clone of the current repo
+          MIRROR_DIR="$GITHUB_WORKSPACE/.git-mirror"
+          rm -rf "$MIRROR_DIR"
+          git clone --bare . "$MIRROR_DIR"
+          # Redirect the exact sentinel URL to our local mirror.
+          # find-current-git-tag.sh clones https://github.com/$github_action_repository
+          # Under act with uses: ., github_action_repository = GITHUB_REPOSITORY (sentinel).
+          git config --global url."file://$MIRROR_DIR".insteadOf "https://github.com/$GITHUB_REPOSITORY"
+
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "5"
+          custom-url: "legacy.github.io/oldrepo"
+          umbrella-dir: pr-preview
+          comment: "false"
+        # auto with workflow_dispatch => deployment-action=none, no deployment steps run
+        # custom-url is deprecated but should still work as pages-base-url
+
+      - name: Assert deployment-action is none
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert pages-base-url reflects custom-url value
+        env:
+          ACTUAL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "pages-base-url: $ACTUAL"
+          if [ "$ACTUAL" != "legacy.github.io/oldrepo" ]; then
+            echo "FAIL: expected 'legacy.github.io/oldrepo' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url uses custom-url
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "preview-url: $ACTUAL"
+          if [ "$ACTUAL" != "https://legacy.github.io/oldrepo/pr-preview/pr-5/" ]; then
+            echo "FAIL: expected 'https://legacy.github.io/oldrepo/pr-preview/pr-5/' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"

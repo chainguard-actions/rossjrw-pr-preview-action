@@ -1,0 +1,83 @@
+name: Test explicit remove action
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up local git mirror to satisfy find-current-git-tag.sh
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Create a tag so git describe works
+          git tag v1.0.0-test 2>/dev/null || true
+          # Create a bare clone of the current repo
+          MIRROR_DIR="$GITHUB_WORKSPACE/.git-mirror"
+          rm -rf "$MIRROR_DIR"
+          git clone --bare . "$MIRROR_DIR"
+          # Redirect the exact sentinel URL to our local mirror.
+          # find-current-git-tag.sh clones https://github.com/$github_action_repository
+          # Under act with uses: ., github_action_repository = GITHUB_REPOSITORY (sentinel).
+          git config --global url."file://$MIRROR_DIR".insteadOf "https://github.com/$GITHUB_REPOSITORY"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          action: remove
+          pr-number: "15"
+          pages-base-url: "myorg.github.io/myproject"
+          umbrella-dir: pr-preview
+          comment: "false"
+          # The actual removal push to gh-pages will fail against the sentinel repo,
+          # but the setup step outputs are set before that.
+
+      - name: Assert deployment-action is remove
+        env:
+          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "deployment-action: $ACTUAL"
+          if [ "$ACTUAL" != "remove" ]; then
+            echo "FAIL: expected 'remove' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path for PR 15
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "preview-url-path: $ACTUAL"
+          if [ "$ACTUAL" != "pr-preview/pr-15" ]; then
+            echo "FAIL: expected 'pr-preview/pr-15' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url for PR 15
+        env:
+          ACTUAL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "preview-url: $ACTUAL"
+          if [ "$ACTUAL" != "https://myorg.github.io/myproject/pr-preview/pr-15/" ]; then
+            echo "FAIL: expected 'https://myorg.github.io/myproject/pr-preview/pr-15/' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert pages-base-url
+        env:
+          ACTUAL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "pages-base-url: $ACTUAL"
+          if [ "$ACTUAL" != "myorg.github.io/myproject" ]; then
+            echo "FAIL: expected 'myorg.github.io/myproject' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
