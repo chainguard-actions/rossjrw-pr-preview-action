@@ -35,17 +35,18 @@ action_version=$("$GITHUB_ACTION_PATH/lib/find-current-git-tag.sh" -p "$github_a
 action_start_timestamp=$(date '+%s')
 action_start_time=$(date '+%Y-%m-%d %H:%M %Z')
 
-# Sanitize attacker-controlled values before writing to GITHUB_ENV/GITHUB_OUTPUT
-safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')
+# Sanitize user-controlled values to prevent newline injection into GITHUB_ENV/GITHUB_OUTPUT
 safe_umbrella_path=$(printf '%s' "$umbrella_path" | tr -d '\n\r')
 safe_pr_number=$(printf '%s' "$pr_number" | tr -d '\n\r')
 safe_pages_base_url=$(printf '%s' "$pages_base_url" | tr -d '\n\r')
 safe_pages_base_path=$(printf '%s' "$pages_base_path" | tr -d '\n\r')
 safe_deployment_repository=$(printf '%s' "$deployment_repository" | tr -d '\n\r')
-safe_deprecated_custom_url=$(printf '%s' "$deprecated_custom_url" | tr -d '\n\r')
 safe_preview_file_path=$(printf '%s' "$preview_file_path" | tr -d '\n\r')
 safe_preview_url_path=$(printf '%s' "$preview_url_path" | tr -d '\n\r')
+safe_action_version=$(printf '%s' "$action_version" | tr -d '\n\r')
+safe_action_start_time=$(printf '%s' "$action_start_time" | tr -d '\n\r')
 safe_github_action_repository=$(printf '%s' "$github_action_repository" | tr -d '\n\r')
+safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')
 
 # Export variables for later use by this action
 {
@@ -58,8 +59,8 @@ safe_github_action_repository=$(printf '%s' "$github_action_repository" | tr -d 
     echo "preview_url=https://$safe_pages_base_url/$safe_preview_url_path/"
 
     echo "action_repository=$safe_github_action_repository"
-    echo "action_version=$action_version"
-    echo "action_start_time=$action_start_time"
+    echo "action_version=$safe_action_version"
+    echo "action_start_time=$safe_action_start_time"
 } >> "$GITHUB_ENV"
 
 # Export variables for use by later actions in user workflow
@@ -70,7 +71,7 @@ safe_github_action_repository=$(printf '%s' "$github_action_repository" | tr -d 
     echo "preview_url_path=$safe_preview_url_path"
     echo "preview_url=https://$safe_pages_base_url/$safe_preview_url_path/"
 
-    echo "action_version=$action_version"
+    echo "action_version=$safe_action_version"
     echo "action_start_timestamp=$action_start_timestamp"
-    echo "action_start_time=$action_start_time"
+    echo "action_start_time=$safe_action_start_time"
 } >> "$GITHUB_OUTPUT"

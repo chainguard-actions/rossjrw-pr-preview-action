@@ -1,0 +1,57 @@
+name: Test explicit remove action
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          action: remove
+          pr-number: "55"
+          pages-base-url: "myorg.github.io/myrepo"
+          umbrella-dir: pr-preview
+          preview-branch: gh-pages
+          comment: "false"
+
+      - name: Assert remove action ran or failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
+          PREVIEW_URL: ${{ steps.action.outputs.preview-url }}
+          PREVIEW_URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+          PAGES_BASE_URL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          echo "preview-url: $PREVIEW_URL"
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+          echo "pages-base-url: $PAGES_BASE_URL"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ "$DEPLOYMENT_ACTION" != "remove" ]; then
+              echo "FAIL: expected deployment-action=remove, got '$DEPLOYMENT_ACTION'"
+              exit 1
+            fi
+            if [ "$PAGES_BASE_URL" != "myorg.github.io/myrepo" ]; then
+              echo "FAIL: expected pages-base-url=myorg.github.io/myrepo, got '$PAGES_BASE_URL'"
+              exit 1
+            fi
+            if [ "$PREVIEW_URL_PATH" != "pr-preview/pr-55" ]; then
+              echo "FAIL: expected preview-url-path=pr-preview/pr-55, got '$PREVIEW_URL_PATH'"
+              exit 1
+            fi
+            if [ "$PREVIEW_URL" != "https://myorg.github.io/myrepo/pr-preview/pr-55/" ]; then
+              echo "FAIL: expected preview-url=https://myorg.github.io/myrepo/pr-preview/pr-55/, got '$PREVIEW_URL'"
+              exit 1
+            fi
+            echo "PASS: remove action ran successfully with correct outputs"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo not deployable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

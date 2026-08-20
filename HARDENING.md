@@ -1,32 +1,62 @@
+<!-- markdownlint-disable -->
+
 # Hardening Report: rossjrw--pr-preview-action/v1.7.1
 
 > This file was generated automatically by the hardening agent.
 
-**Policy SHA:** `ff50f15e4b79bfbf764dafdfd2579175a6ea9771`
+**Policy SHA:** `d636be7e43ef829af6e853da6b3c7566db9f72fe`
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
-Action **rossjrw--pr-preview-action/v1.7.1** was hardened automatically. 8 finding(s) were identified and resolved across 3 iteration(s).
+**Harden Agent Version:** `2`
+
+Action **rossjrw--pr-preview-action/v1.7.1** was hardened automatically. 10 finding(s) were identified and resolved across 2 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Two run: blocks in action.yml directly interpolate inputs.* expressions inside shell commands without first assigning them to environment variables. The 'Wait for preview deployment on GitHub Pages' step passes ${{ inputs.deploy-repository }}, ${{ inputs.preview-branch }}, and ${{ inputs.token }} directly as shell arguments to wait_for_pages_deployment. The 'Wait for preview removal on GitHub Pages' step does the same. An attacker controlling these inputs (e.g. via a pull_request event) could inject arbitrary shell commands.
+Sub-rule (a): Two run: blocks in action.yml directly interpolate GitHub Actions expressions inside shell command strings. The 'Wait for preview deployment on GitHub Pages' step calls: wait_for_pages_deployment "${{ inputs.deploy-repository }}" "${{ steps.deployed-commit.outputs.deployed_commit_sha }}" "${{ inputs.preview-branch }}" "${{ inputs.token }}". The 'Wait for preview removal on GitHub Pages' step has the same pattern with ${{ steps.removed-commit.outputs.deployed_commit_sha }}. These ${{ }} expressions are expanded by the Actions template engine before the shell sees the string, allowing an attacker-controlled value (e.g. inputs.deploy-repository or inputs.preview-branch) to inject arbitrary shell commands.
 
 Locations:
 
-- `action.yml:193`
-- `action.yml:261`
+- `action.yml:175`
+- `action.yml:240`
 
 ### github-env-injection (severity: high)
 
-lib/main.sh writes attacker-controlled values derived from inputs.* (umbrella_path from inputs.umbrella-dir, pr_number from inputs.pr-number, pages_base_url from inputs.pages-base-url, pages_base_path from inputs.pages-base-path, deployment_repository from inputs.deploy-repository, deprecated_custom_url from inputs.custom-url) directly to $GITHUB_ENV and $GITHUB_OUTPUT using plain echo, without the required sanitization step (printf '%s' "$VAR" | tr -d '\n\r'). A malicious input containing newlines could inject arbitrary environment variable definitions into subsequent steps.
+lib/main.sh writes multiple user-controlled values to $GITHUB_ENV and $GITHUB_OUTPUT without sanitization (no 'printf "%s" | tr -d "\n\r"' step). The variables umbrella_path, pr_number, pages_base_url, pages_base_path, deployment_repository, and deprecated_custom_url are all sourced from inputs.* and github.* context (set via the env: block in action.yml) and are written directly with echo into $GITHUB_ENV and $GITHUB_OUTPUT. A newline in any of these values could inject additional environment variable assignments or output parameters.
 
 Locations:
 
-- `lib/main.sh:43`
-- `lib/main.sh:54`
+- `lib/main.sh:40`
+- `lib/main.sh:52`
+
+### unpinned-uses (severity: high)
+
+Multiple workflow files reference actions by mutable tag instead of a pinned 40-character commit SHA, making them vulnerable to supply-chain attacks if the tag is moved. Failing references: deploy-example.yml: 'actions/checkout@v4' and 'JamesIves/github-pages-deploy-action@v4'; preview-example.yml: 'actions/checkout@v4' and 'rossjrw/pr-preview-action@v1'; test.yml: 'actions/checkout@v4' (5 occurrences across all jobs).
+
+Locations:
+
+- `.github/workflows/deploy-example.yml:9`
+- `.github/workflows/deploy-example.yml:12`
+- `.github/workflows/preview-example.yml:13`
+- `.github/workflows/preview-example.yml:16`
+- `.github/workflows/test.yml:17`
+- `.github/workflows/test.yml:34`
+- `.github/workflows/test.yml:98`
+- `.github/workflows/test.yml:162`
+- `.github/workflows/test.yml:248`
+
+### missing-permissions (severity: medium)
+
+None of the three workflow files define a top-level 'permissions:' key, and no individual job within any of these files defines a 'permissions:' key either. Without explicit permissions, workflows run with the default (potentially write) token permissions, violating the principle of least privilege. Affected files: test.yml, deploy-example.yml, preview-example.yml.
+
+Locations:
+
+- `.github/workflows/test.yml:1`
+- `.github/workflows/deploy-example.yml:1`
+- `.github/workflows/preview-example.yml:1`
 
 ### static-inline-injection (severity: high)
 
@@ -80,29 +110,35 @@ Locations:
 
 ### Iteration 1
 
-**Fixes applied:** script-injection, static-inline-injection, github-env-injection
+**Fixes applied:** script-injection, static-inline-injection, github-env-injection, unpinned-uses, missing-permissions
 
 **Notes:**
 
-Fixed two categories of issues:
+Fixed all findings:
 
-1. action.yml - 'Wait for preview deployment on GitHub Pages' and 'Wait for preview removal on GitHub Pages' steps: Moved ${{ inputs.deploy-repository }}, ${{ inputs.preview-branch }}, and ${{ inputs.token }} out of run: shell blocks and into env: blocks (as DEPLOY_REPOSITORY, PREVIEW_BRANCH, DEPLOY_TOKEN, DEPLOYED_COMMIT_SHA/REMOVED_COMMIT_SHA). Shell commands now reference these as plain $ENV_VAR variables.
+1. script-injection / static-inline-injection (action.yml): Moved all ${{ inputs.deploy-repository }}, ${{ inputs.preview-branch }}, ${{ inputs.token }}, and ${{ steps.*.outputs.deployed_commit_sha }} expressions from run: blocks into env: blocks for both 'Wait for preview deployment on GitHub Pages' and 'Wait for preview removal on GitHub Pages' steps. Shell commands now reference plain env vars ($WAIT_DEPLOY_REPO, $WAIT_DEPLOYED_SHA, $WAIT_PREVIEW_BRANCH, $WAIT_TOKEN).
 
-2. lib/main.sh - Added sanitization of all attacker-controlled input-derived values (umbrella_path, pr_number, pages_base_url, pages_base_path, deployment_repository, deprecated_custom_url, preview_file_path, preview_url_path) using `printf '%s' "$VAR" | tr -d '\n\r'` before writing to $GITHUB_ENV and $GITHUB_OUTPUT. All echo statements to those files now use the safe_* sanitized variables.
+2. github-env-injection (lib/main.sh): Added sanitization of all user-controlled values using `printf '%s' "$VAR" | tr -d '\n\r'` before writing to $GITHUB_ENV and $GITHUB_OUTPUT. Sanitized variables: umbrella_path, pr_number, pages_base_url, pages_base_path, deployment_repository, preview_file_path, preview_url_path, action_version, action_start_time, github_action_repository.
+
+3. unpinned-uses: Pinned all mutable tag references to full commit SHAs in deploy-example.yml, preview-example.yml, and test.yml:
+   - actions/checkout@v4 → @11d5960a326750d5838078e36cf38b85af677262 # v4
+   - JamesIves/github-pages-deploy-action@v4 → @fa24774553152dd7873cd16ebd8d959b010c5445 # v4
+   - rossjrw/pr-preview-action@v1 → @ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1
+
+4. missing-permissions: Added top-level permissions blocks to all three workflow files with minimal required permissions.
 
 ### Iteration 2
 
-**Fixes applied:** github-env-injection
+**Fixes applied:** github-env-injection, script-injection
 
 **Notes:**
 
-In lib/main.sh, added sanitization for the `github_action_repository` variable by creating `safe_github_action_repository=$(printf '%s' "$github_action_repository" | tr -d '\n\r')` alongside the other safe_* variables, and replaced the unsanitized `echo "action_repository=$github_action_repository"` with `echo "action_repository=$safe_github_action_repository"` when writing to $GITHUB_ENV. This follows the same pattern already used for all other attacker-controlled inputs (umbrella_path, pr_number, pages_base_url, etc.) and prevents newline injection attacks via a crafted repository name.
+Fixed two security findings:
 
-### Iteration 3
+1. **github-env-injection (lib/main.sh)**: Added `safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')` and replaced both raw `echo "deployment_action=$deployment_action"` occurrences (GITHUB_ENV at line 57 and GITHUB_OUTPUT at line 67) with the sanitized `safe_deployment_action` variable.
 
-**Fixes applied:** github-env-injection
-
-**Notes:**
-
-In lib/main.sh, added sanitization for the `deployment_action` variable by creating `safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')` alongside the other safe_* variable definitions. Replaced both unsanitized `echo "deployment_action=$deployment_action"` writes (lines 52 and 63) with `echo "deployment_action=$safe_deployment_action"` in the GITHUB_ENV and GITHUB_OUTPUT write blocks. This prevents newline injection attacks where an attacker could inject arbitrary entries into the GitHub environment file via the `inputs.action` parameter.
+2. **script-injection (.github/workflows/test.yml)**: Fixed all `run:` blocks with direct `${{ }}` expression interpolation:
+   - Modify fixture steps: replaced `${{ env.TEST_ID }}` in sed commands with shell env var `$TEST_ID` (already available from job-level env) using proper shell quoting.
+   - Verify deployed/redeployed steps: moved `${{ env.TEST_ID }}-INITIALISED` and `${{ env.TEST_ID }}-REDEPLOYED` into `env: EXPECTED_CONTENT:` blocks, referenced as `"$EXPECTED_CONTENT"` in run.
+   - Cleanup steps (all 4 jobs): added `env: DEPLOY_TOKEN: ${{ secrets.TEST_DEPLOY_TOKEN }}` and replaced `"${{ secrets.TEST_DEPLOY_TOKEN }}"` positional arguments with `"$DEPLOY_TOKEN"`. Other variables (TEST_DEPLOY_REPO, TEST_ID, TEST_UMBRELLA_DIR, CUSTOM_UMBRELLA_DIR) were already available as shell env vars from job-level env blocks.
 

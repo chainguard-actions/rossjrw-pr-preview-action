@@ -1,0 +1,27 @@
+name: Preview example site
+on:
+    pull_request:
+        types:
+            - opened
+            - reopened
+            - synchronize
+            - closed
+concurrency: preview-${{ github.ref }}
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    deploy-preview:
+        runs-on: ubuntu-latest
+        # Only run if this PR is not from a fork
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        steps:
+            - name: Checkout
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+            - name: Deploy preview
+              uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1
+              with:
+                  source-dir: test

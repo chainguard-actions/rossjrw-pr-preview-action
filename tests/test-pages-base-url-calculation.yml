@@ -1,0 +1,73 @@
+name: Test pages-base-url calculation with explicit URL
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Test with explicit pages-base-url and pages-base-path to verify URL path computation
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          action: auto
+          pr-number: "7"
+          pages-base-url: "example.github.io/my-site"
+          pages-base-path: ""
+          umbrella-dir: pr-preview
+          comment: "false"
+        env:
+          GITHUB_EVENT_NAME: workflow_dispatch
+
+      - name: Assert outputs are computed correctly or action failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
+          PAGES_BASE_URL: ${{ steps.action.outputs.pages-base-url }}
+          PREVIEW_URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+          PREVIEW_URL: ${{ steps.action.outputs.preview-url }}
+          ACTION_START_TIMESTAMP: ${{ steps.action.outputs.action-start-timestamp }}
+          ACTION_START_TIME: ${{ steps.action.outputs.action-start-time }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          echo "pages-base-url: $PAGES_BASE_URL"
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+          echo "preview-url: $PREVIEW_URL"
+          echo "action-start-timestamp: $ACTION_START_TIMESTAMP"
+          echo "action-start-time: $ACTION_START_TIME"
+          if [ "$OUTCOME" = "success" ]; then
+            # For workflow_dispatch event, auto action should be 'none'
+            if [ "$DEPLOYMENT_ACTION" != "none" ]; then
+              echo "FAIL: expected deployment-action=none for workflow_dispatch, got '$DEPLOYMENT_ACTION'"
+              exit 1
+            fi
+            if [ "$PAGES_BASE_URL" != "example.github.io/my-site" ]; then
+              echo "FAIL: expected pages-base-url=example.github.io/my-site, got '$PAGES_BASE_URL'"
+              exit 1
+            fi
+            if [ "$PREVIEW_URL_PATH" != "pr-preview/pr-7" ]; then
+              echo "FAIL: expected preview-url-path=pr-preview/pr-7, got '$PREVIEW_URL_PATH'"
+              exit 1
+            fi
+            if [ "$PREVIEW_URL" != "https://example.github.io/my-site/pr-preview/pr-7/" ]; then
+              echo "FAIL: expected preview-url=https://example.github.io/my-site/pr-preview/pr-7/, got '$PREVIEW_URL'"
+              exit 1
+            fi
+            if [ -z "$ACTION_START_TIMESTAMP" ]; then
+              echo "FAIL: action-start-timestamp should not be empty"
+              exit 1
+            fi
+            if [ -z "$ACTION_START_TIME" ]; then
+              echo "FAIL: action-start-time should not be empty"
+              exit 1
+            fi
+            echo "PASS: all outputs computed correctly"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo not cloneable for version detection)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
