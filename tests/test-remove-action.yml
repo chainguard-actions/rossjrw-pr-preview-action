@@ -1,4 +1,4 @@
-name: Test git-config-name and git-config-email inputs
+name: Test explicit remove action
 on:
   workflow_dispatch:
 jobs:
@@ -14,17 +14,14 @@ jobs:
         uses: .
         continue-on-error: true
         with:
-          action: deploy
-          pr-number: "99"
+          action: remove
+          pr-number: "15"
           pages-base-url: "testorg.github.io/testrepo"
           umbrella-dir: pr-preview
           preview-branch: gh-pages
-          source-dir: .
           comment: "false"
-          git-config-name: "Test Bot"
-          git-config-email: "testbot@example.com"
 
-      - name: Assert deployment-action output is deploy or action failed gracefully
+      - name: Assert deployment-action output is remove or action failed gracefully
         env:
           OUTCOME: ${{ steps.action.outcome }}
           DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
@@ -32,13 +29,13 @@ jobs:
           echo "outcome: $OUTCOME"
           echo "deployment-action: $DEPLOYMENT_ACTION"
           if [ "$OUTCOME" = "success" ]; then
-            if [ "$DEPLOYMENT_ACTION" != "deploy" ]; then
-              echo "FAIL: expected deployment-action='deploy' but got '$DEPLOYMENT_ACTION'"
+            if [ "$DEPLOYMENT_ACTION" != "remove" ]; then
+              echo "FAIL: expected deployment-action='remove' but got '$DEPLOYMENT_ACTION'"
               exit 1
             fi
-            echo "PASS: deployment-action is 'deploy'"
+            echo "PASS: deployment-action is 'remove'"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (sentinel repo not resolvable for deployment)"
+            echo "PASS: action failed gracefully (sentinel repo not resolvable for removal)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
@@ -52,8 +49,8 @@ jobs:
           echo "outcome: $OUTCOME"
           echo "preview-url-path: $PREVIEW_URL_PATH"
           if [ "$OUTCOME" = "success" ]; then
-            if [ "$PREVIEW_URL_PATH" != "pr-preview/pr-99" ]; then
-              echo "FAIL: expected 'pr-preview/pr-99' but got '$PREVIEW_URL_PATH'"
+            if [ "$PREVIEW_URL_PATH" != "pr-preview/pr-15" ]; then
+              echo "FAIL: expected 'pr-preview/pr-15' but got '$PREVIEW_URL_PATH'"
               exit 1
             fi
             echo "PASS: preview-url-path is correct"

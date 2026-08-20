@@ -1,0 +1,88 @@
+name: Test auto-calculated pages base URL from repository name
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTION_REPOSITORY: rossjrw/pr-preview-action
+      GITHUB_ACTION_REF: refs/tags/v1.8.1
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # When pages-base-url is not set, the action calculates it from deploy-repository.
+      # For "myorg/myrepo" => "myorg.github.io/myrepo"
+      # For "myorg/myorg.github.io" => "myorg.github.io"
+      - id: action-regular
+        uses: .
+        with:
+          action: auto
+          pr-number: "5"
+          deploy-repository: "myorg/myrepo"
+          umbrella-dir: pr-preview
+          comment: "false"
+
+      - name: Assert pages-base-url is auto-calculated for regular repo
+        env:
+          PAGES_BASE_URL: ${{ steps.action-regular.outputs.pages-base-url }}
+        run: |
+          echo "pages-base-url: $PAGES_BASE_URL"
+          if [ "$PAGES_BASE_URL" != "myorg.github.io/myrepo" ]; then
+            echo "FAIL: expected 'myorg.github.io/myrepo' but got '$PAGES_BASE_URL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url is correct for regular repo
+        env:
+          PREVIEW_URL: ${{ steps.action-regular.outputs.preview-url }}
+        run: |
+          echo "preview-url: $PREVIEW_URL"
+          if [ "$PREVIEW_URL" != "https://myorg.github.io/myrepo/pr-preview/pr-5/" ]; then
+            echo "FAIL: expected 'https://myorg.github.io/myrepo/pr-preview/pr-5/' but got '$PREVIEW_URL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert deployment-action is none (workflow_dispatch)
+        env:
+          DEPLOYMENT_ACTION: ${{ steps.action-regular.outputs.deployment-action }}
+        run: |
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          if [ "$DEPLOYMENT_ACTION" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$DEPLOYMENT_ACTION'"
+            exit 1
+          fi
+          echo "PASS"
+
+      # Test with a github.io repo (org.github.io) - Pages URL should be just the domain
+      - id: action-pages-repo
+        uses: .
+        with:
+          action: auto
+          pr-number: "3"
+          deploy-repository: "myorg/myorg.github.io"
+          umbrella-dir: pr-preview
+          comment: "false"
+
+      - name: Assert pages-base-url is auto-calculated for github.io repo
+        env:
+          PAGES_BASE_URL: ${{ steps.action-pages-repo.outputs.pages-base-url }}
+        run: |
+          echo "pages-base-url: $PAGES_BASE_URL"
+          if [ "$PAGES_BASE_URL" != "myorg.github.io" ]; then
+            echo "FAIL: expected 'myorg.github.io' but got '$PAGES_BASE_URL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url is correct for github.io repo
+        env:
+          PREVIEW_URL: ${{ steps.action-pages-repo.outputs.preview-url }}
+        run: |
+          echo "preview-url: $PREVIEW_URL"
+          if [ "$PREVIEW_URL" != "https://myorg.github.io/pr-preview/pr-3/" ]; then
+            echo "FAIL: expected 'https://myorg.github.io/pr-preview/pr-3/' but got '$PREVIEW_URL'"
+            exit 1
+          fi
+          echo "PASS"

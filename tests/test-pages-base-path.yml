@@ -1,0 +1,71 @@
+name: Test pages-base-path strips prefix from preview URL path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_ACTION_REPOSITORY: rossjrw/pr-preview-action
+      GITHUB_ACTION_REF: refs/tags/v1.8.1
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # When pages-base-path is set and umbrella-dir starts with it,
+      # the preview-url-path should have the base path stripped.
+      # e.g. umbrella-dir=docs/pr-preview, pages-base-path=docs
+      # => preview-url-path = pr-preview/pr-99
+      - id: action
+        uses: .
+        with:
+          action: auto
+          pr-number: "99"
+          pages-base-url: "myorg.github.io/myrepo"
+          pages-base-path: "docs"
+          umbrella-dir: docs/pr-preview
+          comment: "false"
+
+      - name: Assert deployment-action is none (workflow_dispatch event)
+        env:
+          DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
+        run: |
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          if [ "$DEPLOYMENT_ACTION" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$DEPLOYMENT_ACTION'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url-path has base-path stripped
+        env:
+          PREVIEW_URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+          # With pages-base-path=docs and umbrella-dir=docs/pr-preview,
+          # the path should be stripped to pr-preview/pr-99
+          if [ "$PREVIEW_URL_PATH" != "pr-preview/pr-99" ]; then
+            echo "FAIL: expected 'pr-preview/pr-99' but got '$PREVIEW_URL_PATH'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url is correct with stripped path
+        env:
+          PREVIEW_URL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "preview-url: $PREVIEW_URL"
+          if [ "$PREVIEW_URL" != "https://myorg.github.io/myrepo/pr-preview/pr-99/" ]; then
+            echo "FAIL: expected 'https://myorg.github.io/myrepo/pr-preview/pr-99/' but got '$PREVIEW_URL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert pages-base-url output matches input
+        env:
+          PAGES_BASE_URL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "pages-base-url: $PAGES_BASE_URL"
+          if [ "$PAGES_BASE_URL" != "myorg.github.io/myrepo" ]; then
+            echo "FAIL: expected 'myorg.github.io/myrepo' but got '$PAGES_BASE_URL'"
+            exit 1
+          fi
+          echo "PASS"

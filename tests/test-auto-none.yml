@@ -1,56 +1,94 @@
-name: Test auto mode on non-PR event (none)
+name: Test auto action with non-PR event (none)
 on:
   workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      GITHUB_EVENT_NAME: push
-      GITHUB_REF: refs/heads/main
+      GITHUB_ACTION_REPOSITORY: rossjrw/pr-preview-action
+      GITHUB_ACTION_REF: refs/tags/v1.8.1
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - id: action
         uses: .
         with:
-          token: ${{ github.token }}
-          preview-branch: gh-pages
-          umbrella-dir: pr-preview
-          source-dir: .
-          pr-number: "42"
           action: auto
+          pr-number: "42"
+          pages-base-url: "myorg.github.io/myrepo"
+          umbrella-dir: pr-preview
           comment: "false"
-        continue-on-error: true
 
       - name: Assert deployment-action is none
         env:
-          ACTUAL: ${{ steps.action.outputs.deployment-action }}
+          DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
         run: |
-          echo "actual deployment-action: $ACTUAL"
-          if [ "$ACTUAL" != "none" ]; then
-            echo "FAIL: expected 'none' but got '$ACTUAL'"
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          if [ "$DEPLOYMENT_ACTION" != "none" ]; then
+            echo "FAIL: expected 'none' but got '$DEPLOYMENT_ACTION'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert pages-base-url output is set
+        env:
+          PAGES_BASE_URL: ${{ steps.action.outputs.pages-base-url }}
+        run: |
+          echo "pages-base-url: $PAGES_BASE_URL"
+          if [ -z "$PAGES_BASE_URL" ]; then
+            echo "FAIL: pages-base-url output is empty"
+            exit 1
+          fi
+          echo "PASS: pages-base-url=$PAGES_BASE_URL"
+
+      - name: Assert preview-url-path output is set
+        env:
+          PREVIEW_URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+        run: |
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+          if [ -z "$PREVIEW_URL_PATH" ]; then
+            echo "FAIL: preview-url-path output is empty"
+            exit 1
+          fi
+          if [ "$PREVIEW_URL_PATH" != "pr-preview/pr-42" ]; then
+            echo "FAIL: expected 'pr-preview/pr-42' but got '$PREVIEW_URL_PATH'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert preview-url output is set
+        env:
+          PREVIEW_URL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "preview-url: $PREVIEW_URL"
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "FAIL: preview-url output is empty"
+            exit 1
+          fi
+          if [ "$PREVIEW_URL" != "https://myorg.github.io/myrepo/pr-preview/pr-42/" ]; then
+            echo "FAIL: expected 'https://myorg.github.io/myrepo/pr-preview/pr-42/' but got '$PREVIEW_URL'"
             exit 1
           fi
           echo "PASS"
 
       - name: Assert action-version output is set
         env:
-          ACTUAL: ${{ steps.action.outputs.action-version }}
+          ACTION_VERSION: ${{ steps.action.outputs.action-version }}
         run: |
-          echo "actual action-version: $ACTUAL"
-          if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected action-version to be non-empty"
+          echo "action-version: $ACTION_VERSION"
+          if [ -z "$ACTION_VERSION" ]; then
+            echo "FAIL: action-version output is empty"
             exit 1
           fi
           echo "PASS"
 
       - name: Assert action-start-timestamp output is set
         env:
-          ACTUAL: ${{ steps.action.outputs.action-start-timestamp }}
+          ACTION_START_TIMESTAMP: ${{ steps.action.outputs.action-start-timestamp }}
         run: |
-          echo "actual action-start-timestamp: $ACTUAL"
-          if [ -z "$ACTUAL" ]; then
-            echo "FAIL: expected action-start-timestamp to be non-empty"
+          echo "action-start-timestamp: $ACTION_START_TIMESTAMP"
+          if [ -z "$ACTION_START_TIMESTAMP" ]; then
+            echo "FAIL: action-start-timestamp output is empty"
             exit 1
           fi
           echo "PASS"

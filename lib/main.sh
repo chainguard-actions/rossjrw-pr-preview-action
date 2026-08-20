@@ -35,35 +35,43 @@ action_version=$("$GITHUB_ACTION_PATH/lib/find-current-git-tag.sh" -p "$action_r
 action_start_timestamp=$(date '+%s')
 action_start_time=$(date '+%Y-%m-%d %H:%M %Z')
 
-# Sanitize a value by stripping newline characters before writing to GITHUB_ENV/GITHUB_OUTPUT
-sanitize() {
-    printf '%s' "$1" | tr -d '\n\r'
-}
+# Sanitize all user-controlled values before writing to GITHUB_ENV / GITHUB_OUTPUT
+# to prevent newline injection attacks.
+safe_empty_dir_path=$(mktemp -d)
+safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')
+safe_preview_file_path=$(printf '%s' "$preview_file_path" | tr -d '\n\r')
+safe_pages_base_url=$(printf '%s' "$pages_base_url" | tr -d '\n\r')
+safe_preview_url_path=$(printf '%s' "$preview_url_path" | tr -d '\n\r')
+safe_preview_url=$(printf '%s' "https://$pages_base_url/$preview_url_path/" | tr -d '\n\r')
+safe_action_repository=$(printf '%s' "$action_repository" | tr -d '\n\r')
+safe_action_version=$(printf '%s' "$action_version" | tr -d '\n\r')
+safe_action_start_time=$(printf '%s' "$action_start_time" | tr -d '\n\r')
+safe_action_start_timestamp=$(printf '%s' "$action_start_timestamp" | tr -d '\n\r')
 
 # Export variables for later use by this action
 {
-    echo "empty_dir_path=$(mktemp -d)"
-    echo "deployment_action=$(sanitize "$deployment_action")"
+    echo "empty_dir_path=$safe_empty_dir_path"
+    echo "deployment_action=$safe_deployment_action"
 
-    echo "preview_file_path=$(sanitize "$preview_file_path")"
-    echo "pages_base_url=$(sanitize "$pages_base_url")"
-    echo "preview_url_path=$(sanitize "$preview_url_path")"
-    echo "preview_url=https://$(sanitize "$pages_base_url")/$(sanitize "$preview_url_path")/"
+    echo "preview_file_path=$safe_preview_file_path"
+    echo "pages_base_url=$safe_pages_base_url"
+    echo "preview_url_path=$safe_preview_url_path"
+    echo "preview_url=$safe_preview_url"
 
-    echo "action_repository=$(sanitize "$action_repository")"
-    echo "action_version=$(sanitize "$action_version")"
-    echo "action_start_time=$(sanitize "$action_start_time")"
+    echo "action_repository=$safe_action_repository"
+    echo "action_version=$safe_action_version"
+    echo "action_start_time=$safe_action_start_time"
 } >> "$GITHUB_ENV"
 
 # Export variables for use by later actions in user workflow
 {
-    echo "deployment_action=$(sanitize "$deployment_action")"
+    echo "deployment_action=$safe_deployment_action"
 
-    echo "pages_base_url=$(sanitize "$pages_base_url")"
-    echo "preview_url_path=$(sanitize "$preview_url_path")"
-    echo "preview_url=https://$(sanitize "$pages_base_url")/$(sanitize "$preview_url_path")/"
+    echo "pages_base_url=$safe_pages_base_url"
+    echo "preview_url_path=$safe_preview_url_path"
+    echo "preview_url=$safe_preview_url"
 
-    echo "action_version=$(sanitize "$action_version")"
-    echo "action_start_timestamp=$(sanitize "$action_start_timestamp")"
-    echo "action_start_time=$(sanitize "$action_start_time")"
+    echo "action_version=$safe_action_version"
+    echo "action_start_timestamp=$safe_action_start_timestamp"
+    echo "action_start_time=$safe_action_start_time"
 } >> "$GITHUB_OUTPUT"
