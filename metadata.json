@@ -1,7 +1,0 @@
-{
-  "owner": "rossjrw",
-  "name": "pr-preview-action",
-  "visibility": "public",
-  "description": "Deploy a pull request preview to GitHub Pages, similar to Vercel and Netlify.\n",
-  "block_publish": false
-}
