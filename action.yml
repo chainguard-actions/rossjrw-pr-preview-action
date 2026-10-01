@@ -181,12 +181,12 @@ runs:
         env.deployment_status == 'success'
       env:
         WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
-        WAIT_DEPLOYED_SHA: ${{ steps.deployed-commit.outputs.deployed_commit_sha }}
+        WAIT_DEPLOYED_COMMIT_SHA: ${{ steps.deployed-commit.outputs.deployed_commit_sha }}
         WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
         WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOYED_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOYED_COMMIT_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Leave a comment after deployment
       if: |
@@ -231,12 +231,12 @@ runs:
         env.deployment_status == 'success'
       env:
         WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
-        WAIT_REMOVED_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
+        WAIT_REMOVED_COMMIT_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
         WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
         WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_REMOVED_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_REMOVED_COMMIT_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Leave a comment after removal
       if: |
