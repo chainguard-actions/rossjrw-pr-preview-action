@@ -154,7 +154,7 @@ runs:
     # DEPLOYMENT
     - name: Deploy preview directory
       if: env.deployment_action == 'deploy'
-      uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+      uses: chainguard-actions/jamesives-github-pages-deploy-action@c3c5f607cbced98675ff7a34ef04b3d7839b9e5b # v4.7.4
       with:
         token: ${{ inputs.token }}
         repository-name: ${{ inputs.deploy-repository }}
@@ -195,21 +195,32 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped')
       env:
-        GC_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
-        GC_SERVER_URL: ${{ github.server_url }}
-        GC_DEPLOY_REPO: ${{ inputs.deploy-repository }}
+        COMMENT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        COMMENT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
+        COMMENT_SERVER_URL: ${{ github.server_url }}
       run: |
+        safe_action_repository="$(printf '%s' "$action_repository" | tr -d '\n\r')"
+        safe_action_version="$(printf '%s' "$action_version" | tr -d '\n\r')"
+        safe_preview_url="$(printf '%s' "$preview_url" | tr -d '\n\r')"
+        safe_comment_preview_branch="$(printf '%s' "$COMMENT_PREVIEW_BRANCH" | tr -d '\n\r')"
+        safe_comment_server_url="$(printf '%s' "$COMMENT_SERVER_URL" | tr -d '\n\r')"
+        safe_comment_deploy_repo="$(printf '%s' "$COMMENT_DEPLOY_REPO" | tr -d '\n\r')"
+        safe_action_start_time="$(printf '%s' "$action_start_time" | tr -d '\n\r')"
         CONTENT=$($GITHUB_ACTION_PATH/lib/generate-comment.sh \
-          "$action_repository" \
-          "$action_version" \
-          "$preview_url" \
-          "$GC_PREVIEW_BRANCH" \
-          "$GC_SERVER_URL" \
-          "$GC_DEPLOY_REPO" \
-          "$action_start_time" \
+          "$safe_action_repository" \
+          "$safe_action_version" \
+          "$safe_preview_url" \
+          "$safe_comment_preview_branch" \
+          "$safe_comment_server_url" \
+          "$safe_comment_deploy_repo" \
+          "$safe_action_start_time" \
           "deploy")
-        safe_content=$(printf '%s' "$CONTENT" | tr -d '\n\r')
-        echo "content=$safe_content" >> "$GITHUB_OUTPUT"
+        DELIM="$(openssl rand -hex 16)"
+        {
+          echo "content<<${DELIM}"
+          echo "$CONTENT"
+          echo "${DELIM}"
+        } >> "$GITHUB_OUTPUT"
       shell: bash
     - name: Leave a comment after deployment
       if: |
@@ -217,14 +228,14 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped') &&
         steps.deploy-comment.outcome == 'success'
-      uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+      uses: chainguard-actions/marocchino-sticky-pull-request-comment@baa3604b440cdc9e8384074a335b91fdb9aaded7 # v2.9.2
       with:
         header: pr-preview
         message: ${{ steps.deploy-comment.outputs.content }}
     # REMOVAL
     - name: Remove preview directory
       if: env.deployment_action == 'remove'
-      uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+      uses: chainguard-actions/jamesives-github-pages-deploy-action@c3c5f607cbced98675ff7a34ef04b3d7839b9e5b # v4.7.4
       with:
         token: ${{ inputs.token }}
         repository-name: ${{ inputs.deploy-repository }}
@@ -251,12 +262,12 @@ runs:
         env.deployment_status == 'success'
       env:
         WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
-        WAIT_REMOVED_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
+        WAIT_DEPLOYED_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
         WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
         WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_REMOVED_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOYED_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Generate comment content for removal
       id: remove-comment
@@ -265,21 +276,32 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped')
       env:
-        GC_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
-        GC_SERVER_URL: ${{ github.server_url }}
-        GC_DEPLOY_REPO: ${{ inputs.deploy-repository }}
+        COMMENT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        COMMENT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
+        COMMENT_SERVER_URL: ${{ github.server_url }}
       run: |
+        safe_action_repository="$(printf '%s' "$action_repository" | tr -d '\n\r')"
+        safe_action_version="$(printf '%s' "$action_version" | tr -d '\n\r')"
+        safe_preview_url="$(printf '%s' "$preview_url" | tr -d '\n\r')"
+        safe_comment_preview_branch="$(printf '%s' "$COMMENT_PREVIEW_BRANCH" | tr -d '\n\r')"
+        safe_comment_server_url="$(printf '%s' "$COMMENT_SERVER_URL" | tr -d '\n\r')"
+        safe_comment_deploy_repo="$(printf '%s' "$COMMENT_DEPLOY_REPO" | tr -d '\n\r')"
+        safe_action_start_time="$(printf '%s' "$action_start_time" | tr -d '\n\r')"
         CONTENT=$($GITHUB_ACTION_PATH/lib/generate-comment.sh \
-          "$action_repository" \
-          "$action_version" \
-          "$preview_url" \
-          "$GC_PREVIEW_BRANCH" \
-          "$GC_SERVER_URL" \
-          "$GC_DEPLOY_REPO" \
-          "$action_start_time" \
+          "$safe_action_repository" \
+          "$safe_action_version" \
+          "$safe_preview_url" \
+          "$safe_comment_preview_branch" \
+          "$safe_comment_server_url" \
+          "$safe_comment_deploy_repo" \
+          "$safe_action_start_time" \
           "remove")
-        safe_content=$(printf '%s' "$CONTENT" | tr -d '\n\r')
-        echo "content=$safe_content" >> "$GITHUB_OUTPUT"
+        DELIM="$(openssl rand -hex 16)"
+        {
+          echo "content<<${DELIM}"
+          echo "$CONTENT"
+          echo "${DELIM}"
+        } >> "$GITHUB_OUTPUT"
       shell: bash
     - name: Leave a comment after removal
       if: |
@@ -287,7 +309,7 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped') &&
         steps.remove-comment.outcome == 'success'
-      uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+      uses: chainguard-actions/marocchino-sticky-pull-request-comment@baa3604b440cdc9e8384074a335b91fdb9aaded7 # v2.9.2
       with:
         header: pr-preview
         message: ${{ steps.remove-comment.outputs.content }}

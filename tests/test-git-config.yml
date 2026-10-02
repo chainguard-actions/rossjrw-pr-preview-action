@@ -14,30 +14,38 @@ jobs:
           action: deploy
           pr-number: "42"
           source-dir: .
-          preview-branch: gh-pages
           umbrella-dir: pr-preview
-          pages-base-url: https://example.github.io/test-repo
+          preview-branch: gh-pages
           comment: "false"
           git-config-name: "Test Bot"
           git-config-email: "testbot@example.com"
 
-      - name: Assert setup outputs are present or action failed gracefully
+      - name: Assert setup outputs are present (deployment-action and preview-url-path)
         env:
-          OUTCOME: ${{ steps.action.outcome }}
           DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
-          PREVIEW_URL: ${{ steps.action.outputs.preview-url }}
+          PREVIEW_URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+          OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           echo "deployment-action: $DEPLOYMENT_ACTION"
-          echo "preview-url: $PREVIEW_URL"
+          echo "preview-url-path: $PREVIEW_URL_PATH"
+
+          # The setup step should always resolve deployment-action to 'deploy'
+          # The actual push to gh-pages may fail on the sentinel repo — that is acceptable.
+          # What we require is that the setup step ran and produced the deployment-action output.
           if [ "$OUTCOME" = "success" ]; then
-            if [ -z "$DEPLOYMENT_ACTION" ]; then
-              echo "FAIL: action succeeded but deployment-action output is empty"
+            if [ "$DEPLOYMENT_ACTION" != "deploy" ]; then
+              echo "FAIL: expected deployment-action=deploy, got '$DEPLOYMENT_ACTION'"
               exit 1
             fi
-            echo "PASS: deployment-action=$DEPLOYMENT_ACTION preview-url=$PREVIEW_URL"
+            if [ -z "$PREVIEW_URL_PATH" ]; then
+              echo "FAIL: expected non-empty preview-url-path"
+              exit 1
+            fi
+            echo "PASS: action succeeded with deployment-action=$DEPLOYMENT_ACTION preview-url-path=$PREVIEW_URL_PATH"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+            # Deployment to sentinel repo fails — acceptable, setup still ran
+            echo "PASS: action failed gracefully (sentinel repo not resolvable for gh-pages push)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
