@@ -35,8 +35,7 @@ action_version=$("$GITHUB_ACTION_PATH/lib/find-current-git-tag.sh" -p "$action_r
 action_start_timestamp=$(date '+%s')
 action_start_time=$(date '+%Y-%m-%d %H:%M %Z')
 
-# Sanitize all user-controlled values before writing to GITHUB_ENV / GITHUB_OUTPUT
-# to prevent newline injection attacks.
+# Sanitize user-controlled values before writing to GITHUB_ENV/GITHUB_OUTPUT
 safe_empty_dir_path=$(mktemp -d)
 safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')
 safe_preview_file_path=$(printf '%s' "$preview_file_path" | tr -d '\n\r')
