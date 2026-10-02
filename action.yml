@@ -182,11 +182,11 @@ runs:
       env:
         WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
         WAIT_DEPLOY_SHA: ${{ steps.deployed-commit.outputs.deployed_commit_sha }}
-        WAIT_DEPLOY_BRANCH: ${{ inputs.preview-branch }}
-        WAIT_DEPLOY_TOKEN: ${{ inputs.token }}
+        WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOY_SHA" "$WAIT_DEPLOY_BRANCH" "$WAIT_DEPLOY_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOY_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Generate comment content for deployment
       id: deploy-comment
@@ -195,28 +195,30 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped')
       env:
-        COMMENT_ACTION_REPOSITORY: ${{ env.action_repository }}
-        COMMENT_ACTION_VERSION: ${{ env.action_version }}
-        COMMENT_PREVIEW_URL: ${{ env.preview_url }}
-        COMMENT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
-        COMMENT_SERVER_URL: ${{ github.server_url }}
-        COMMENT_DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
-        COMMENT_ACTION_START_TIME: ${{ env.action_start_time }}
+        GC_ACTION_REPOSITORY: ${{ env.action_repository }}
+        GC_ACTION_VERSION: ${{ env.action_version }}
+        GC_PREVIEW_URL: ${{ env.preview_url }}
+        GC_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        GC_SERVER_URL: ${{ github.server_url }}
+        GC_DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
+        GC_ACTION_START_TIME: ${{ env.action_start_time }}
       run: |
+        SAFE_PREVIEW_BRANCH=$(printf '%s' "$GC_PREVIEW_BRANCH" | tr -d '\n\r')
+        SAFE_DEPLOY_REPOSITORY=$(printf '%s' "$GC_DEPLOY_REPOSITORY" | tr -d '\n\r')
         CONTENT=$($GITHUB_ACTION_PATH/lib/generate-comment.sh \
-          "$COMMENT_ACTION_REPOSITORY" \
-          "$COMMENT_ACTION_VERSION" \
-          "$COMMENT_PREVIEW_URL" \
-          "$COMMENT_PREVIEW_BRANCH" \
-          "$COMMENT_SERVER_URL" \
-          "$COMMENT_DEPLOY_REPOSITORY" \
-          "$COMMENT_ACTION_START_TIME" \
+          "$GC_ACTION_REPOSITORY" \
+          "$GC_ACTION_VERSION" \
+          "$GC_PREVIEW_URL" \
+          "$SAFE_PREVIEW_BRANCH" \
+          "$GC_SERVER_URL" \
+          "$SAFE_DEPLOY_REPOSITORY" \
+          "$GC_ACTION_START_TIME" \
           "deploy")
-        DELIM="$(openssl rand -hex 16)"
+        DELIMITER="GCEOF_$(openssl rand -hex 16)"
         {
-          echo "content<<${DELIM}"
-          printf '%s\n' "$CONTENT"
-          echo "${DELIM}"
+          echo "content<<${DELIMITER}"
+          echo "$CONTENT"
+          echo "${DELIMITER}"
         } >> "$GITHUB_OUTPUT"
       shell: bash
     - name: Leave a comment after deployment
@@ -260,11 +262,11 @@ runs:
       env:
         WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
         WAIT_DEPLOY_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
-        WAIT_DEPLOY_BRANCH: ${{ inputs.preview-branch }}
-        WAIT_DEPLOY_TOKEN: ${{ inputs.token }}
+        WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOY_SHA" "$WAIT_DEPLOY_BRANCH" "$WAIT_DEPLOY_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOY_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Generate comment content for removal
       id: remove-comment
@@ -273,28 +275,30 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped')
       env:
-        COMMENT_ACTION_REPOSITORY: ${{ env.action_repository }}
-        COMMENT_ACTION_VERSION: ${{ env.action_version }}
-        COMMENT_PREVIEW_URL: ${{ env.preview_url }}
-        COMMENT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
-        COMMENT_SERVER_URL: ${{ github.server_url }}
-        COMMENT_DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
-        COMMENT_ACTION_START_TIME: ${{ env.action_start_time }}
+        GC_ACTION_REPOSITORY: ${{ env.action_repository }}
+        GC_ACTION_VERSION: ${{ env.action_version }}
+        GC_PREVIEW_URL: ${{ env.preview_url }}
+        GC_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        GC_SERVER_URL: ${{ github.server_url }}
+        GC_DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
+        GC_ACTION_START_TIME: ${{ env.action_start_time }}
       run: |
+        SAFE_PREVIEW_BRANCH=$(printf '%s' "$GC_PREVIEW_BRANCH" | tr -d '\n\r')
+        SAFE_DEPLOY_REPOSITORY=$(printf '%s' "$GC_DEPLOY_REPOSITORY" | tr -d '\n\r')
         CONTENT=$($GITHUB_ACTION_PATH/lib/generate-comment.sh \
-          "$COMMENT_ACTION_REPOSITORY" \
-          "$COMMENT_ACTION_VERSION" \
-          "$COMMENT_PREVIEW_URL" \
-          "$COMMENT_PREVIEW_BRANCH" \
-          "$COMMENT_SERVER_URL" \
-          "$COMMENT_DEPLOY_REPOSITORY" \
-          "$COMMENT_ACTION_START_TIME" \
+          "$GC_ACTION_REPOSITORY" \
+          "$GC_ACTION_VERSION" \
+          "$GC_PREVIEW_URL" \
+          "$SAFE_PREVIEW_BRANCH" \
+          "$GC_SERVER_URL" \
+          "$SAFE_DEPLOY_REPOSITORY" \
+          "$GC_ACTION_START_TIME" \
           "remove")
-        DELIM="$(openssl rand -hex 16)"
+        DELIMITER="GCEOF_$(openssl rand -hex 16)"
         {
-          echo "content<<${DELIM}"
-          printf '%s\n' "$CONTENT"
-          echo "${DELIM}"
+          echo "content<<${DELIMITER}"
+          echo "$CONTENT"
+          echo "${DELIMITER}"
         } >> "$GITHUB_OUTPUT"
       shell: bash
     - name: Leave a comment after removal

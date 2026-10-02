@@ -20,8 +20,6 @@ jobs:
           rm -rf "$MIRROR_DIR"
           git clone --bare . "$MIRROR_DIR"
           # Redirect the exact sentinel URL to our local mirror.
-          # find-current-git-tag.sh clones https://github.com/$github_action_repository
-          # Under act with uses: ., github_action_repository = GITHUB_REPOSITORY (sentinel).
           git config --global url."file://$MIRROR_DIR".insteadOf "https://github.com/$GITHUB_REPOSITORY"
 
       - id: action
@@ -30,13 +28,11 @@ jobs:
         with:
           action: deploy
           pr-number: "42"
-          pages-base-url: "myorg.github.io/myrepo"
+          pages-base-url: "example.github.io/mysite"
           umbrella-dir: pr-preview
           comment: "false"
           git-config-name: "Preview Bot"
           git-config-email: "preview-bot@example.com"
-          # The actual deployment to gh-pages will fail against the sentinel repo,
-          # but the setup step outputs are set before that.
 
       - name: Assert deployment-action is deploy
         env:
@@ -67,8 +63,8 @@ jobs:
           ACTUAL: ${{ steps.action.outputs.preview-url }}
         run: |
           echo "preview-url: $ACTUAL"
-          if [ "$ACTUAL" != "https://myorg.github.io/myrepo/pr-preview/pr-42/" ]; then
-            echo "FAIL: expected 'https://myorg.github.io/myrepo/pr-preview/pr-42/' but got '$ACTUAL'"
+          if [ "$ACTUAL" != "https://example.github.io/mysite/pr-preview/pr-42/" ]; then
+            echo "FAIL: expected 'https://example.github.io/mysite/pr-preview/pr-42/' but got '$ACTUAL'"
             exit 1
           fi
           echo "PASS"
