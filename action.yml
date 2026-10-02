@@ -154,7 +154,7 @@ runs:
     # DEPLOYMENT
     - name: Deploy preview directory
       if: env.deployment_action == 'deploy'
-      uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+      uses: chainguard-actions/jamesives-github-pages-deploy-action@c3c5f607cbced98675ff7a34ef04b3d7839b9e5b # v4.7.4
       with:
         token: ${{ inputs.token }}
         repository-name: ${{ inputs.deploy-repository }}
@@ -181,12 +181,12 @@ runs:
         env.deployment_status == 'success'
       env:
         WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
-        WAIT_DEPLOY_SHA: ${{ steps.deployed-commit.outputs.deployed_commit_sha }}
+        WAIT_DEPLOYED_COMMIT_SHA: ${{ steps.deployed-commit.outputs.deployed_commit_sha }}
         WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
         WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOY_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOYED_COMMIT_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Generate comment content for deployment
       id: deploy-comment
@@ -214,12 +214,11 @@ runs:
           "$SAFE_DEPLOY_REPOSITORY" \
           "$GC_ACTION_START_TIME" \
           "deploy")
-        DELIMITER="GCEOF_$(openssl rand -hex 16)"
         {
-          echo "content<<${DELIMITER}"
+          echo "content<<EOF"
           echo "$CONTENT"
-          echo "${DELIMITER}"
-        } >> "$GITHUB_OUTPUT"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
       shell: bash
     - name: Leave a comment after deployment
       if: |
@@ -227,14 +226,14 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped') &&
         steps.deploy-comment.outcome == 'success'
-      uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+      uses: chainguard-actions/marocchino-sticky-pull-request-comment@baa3604b440cdc9e8384074a335b91fdb9aaded7 # v2.9.2
       with:
         header: pr-preview
         message: ${{ steps.deploy-comment.outputs.content }}
     # REMOVAL
     - name: Remove preview directory
       if: env.deployment_action == 'remove'
-      uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+      uses: chainguard-actions/jamesives-github-pages-deploy-action@c3c5f607cbced98675ff7a34ef04b3d7839b9e5b # v4.7.4
       with:
         token: ${{ inputs.token }}
         repository-name: ${{ inputs.deploy-repository }}
@@ -261,12 +260,12 @@ runs:
         env.deployment_status == 'success'
       env:
         WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
-        WAIT_DEPLOY_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
+        WAIT_REMOVED_COMMIT_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
         WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
         WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOY_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_REMOVED_COMMIT_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Generate comment content for removal
       id: remove-comment
@@ -294,12 +293,11 @@ runs:
           "$SAFE_DEPLOY_REPOSITORY" \
           "$GC_ACTION_START_TIME" \
           "remove")
-        DELIMITER="GCEOF_$(openssl rand -hex 16)"
         {
-          echo "content<<${DELIMITER}"
+          echo "content<<EOF"
           echo "$CONTENT"
-          echo "${DELIMITER}"
-        } >> "$GITHUB_OUTPUT"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
       shell: bash
     - name: Leave a comment after removal
       if: |
@@ -307,7 +305,7 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped') &&
         steps.remove-comment.outcome == 'success'
-      uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+      uses: chainguard-actions/marocchino-sticky-pull-request-comment@baa3604b440cdc9e8384074a335b91fdb9aaded7 # v2.9.2
       with:
         header: pr-preview
         message: ${{ steps.remove-comment.outputs.content }}
