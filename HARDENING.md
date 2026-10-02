@@ -10,28 +10,50 @@
 
 **Harden Agent Version:** `2`
 
-Action **rossjrw--pr-preview-action/v1.8.1** was hardened automatically. 13 finding(s) were identified and resolved across 2 iteration(s).
+Action **rossjrw--pr-preview-action/v1.8.1** was hardened automatically. 16 finding(s) were identified and resolved across 2 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Sub-rule (a): Four `run:` blocks in action.yml directly interpolate `${{ }}` expressions inside shell command strings, enabling script injection. (1) The 'Wait for preview deployment on GitHub Pages' (deploy) step passes `${{ inputs.deploy-repository }}`, `${{ steps.deployed-commit.outputs.deployed_commit_sha }}`, `${{ inputs.preview-branch }}`, and `${{ inputs.token }}` directly as shell arguments to `wait_for_pages_deployment`. (2) The 'Generate comment content for deployment' step passes `${{ env.action_repository }}`, `${{ env.action_version }}`, `${{ env.preview_url }}`, `${{ inputs.preview-branch }}`, `${{ github.server_url }}`, `${{ inputs.deploy-repository }}`, `${{ env.action_start_time }}`, and `${{ inputs.qr-code }}` directly as shell arguments. (3) The 'Wait for preview removal on GitHub Pages' (remove) step has the same pattern as (1) with `${{ steps.removed-commit.outputs.deployed_commit_sha }}`. (4) The 'Generate comment content for removal' step has the same pattern as (2). Any of these inputs could contain shell metacharacters injected by an attacker via a pull request or workflow_dispatch event.
+Rule (a): The 'Wait for preview deployment on GitHub Pages' run: block directly interpolates ${{ inputs.deploy-repository }}, ${{ steps.deployed-commit.outputs.deployed_commit_sha }}, ${{ inputs.preview-branch }}, and ${{ inputs.token }} inside the shell command string. YAML template substitution occurs before the shell parses the command, allowing an attacker-controlled value to inject arbitrary shell commands. Offending line: `wait_for_pages_deployment "${{ inputs.deploy-repository }}" "${{ steps.deployed-commit.outputs.deployed_commit_sha }}" "${{ inputs.preview-branch }}" "${{ inputs.token }}"`
 
 Locations:
 
-- `action.yml:200`
-- `action.yml:212`
-- `action.yml:262`
-- `action.yml:274`
+- `action.yml:196`
+
+### script-injection (severity: high)
+
+Rule (a): The 'Generate comment content for deployment' run: block directly interpolates multiple ${{ }} expressions inside shell command strings, including ${{ env.action_repository }}, ${{ env.action_version }}, ${{ env.preview_url }}, ${{ inputs.preview-branch }}, ${{ github.server_url }}, ${{ inputs.deploy-repository }}, ${{ env.action_start_time }}, and ${{ inputs.qr-code }}. YAML template substitution occurs before the shell parses the command, allowing attacker-controlled values to inject arbitrary shell commands.
+
+Locations:
+
+- `action.yml:207`
+
+### script-injection (severity: high)
+
+Rule (a): The 'Wait for preview removal on GitHub Pages' run: block directly interpolates ${{ inputs.deploy-repository }}, ${{ steps.removed-commit.outputs.deployed_commit_sha }}, ${{ inputs.preview-branch }}, and ${{ inputs.token }} inside the shell command string. YAML template substitution occurs before the shell parses the command, allowing an attacker-controlled value to inject arbitrary shell commands. Offending line: `wait_for_pages_deployment "${{ inputs.deploy-repository }}" "${{ steps.removed-commit.outputs.deployed_commit_sha }}" "${{ inputs.preview-branch }}" "${{ inputs.token }}"`
+
+Locations:
+
+- `action.yml:265`
+
+### script-injection (severity: high)
+
+Rule (a): The 'Generate comment content for removal' run: block directly interpolates multiple ${{ }} expressions inside shell command strings, including ${{ env.action_repository }}, ${{ env.action_version }}, ${{ env.preview_url }}, ${{ inputs.preview-branch }}, ${{ github.server_url }}, ${{ inputs.deploy-repository }}, ${{ env.action_start_time }}, and ${{ env.qr_code_provider }}. YAML template substitution occurs before the shell parses the command, allowing attacker-controlled values to inject arbitrary shell commands.
+
+Locations:
+
+- `action.yml:276`
 
 ### github-env-injection (severity: high)
 
-In `lib/main.sh`, multiple variables derived from user-controlled inputs (set via the `env:` block in action.yml from `inputs.*` and `github.*` context values) are written to `$GITHUB_ENV` and `$GITHUB_OUTPUT` without the required sanitization step (`printf '%s' ... | tr -d '\n\r'`). Variables written include: `umbrella_path` (from `inputs.umbrella-dir`), `pages_base_url` (from `inputs.pages-base-url` or `inputs.custom-url`), `pr_number` (from `inputs.pr-number` or `github.event.number`), `deployment_repository` (from `inputs.deploy-repository`), `preview_file_path`, `preview_url_path`, `preview_url`, `action_repository` (from `github.action_repository`), `action_version`, `action_start_time`. A newline in any of these values could inject arbitrary environment variables into subsequent steps.
+lib/main.sh writes multiple values derived from inherited env vars (set from inputs.* and github.* context via the env: block of the calling step) to $GITHUB_ENV and $GITHUB_OUTPUT without the required sanitization step (printf '%s' ... | tr -d '\n\r'). Variables written include: pages_base_url (from inputs.pages-base-url), preview_url (constructed from pages_base_url), action_repository (from github.action_repository/github.repository), action_version (from action_ref), action_start_time, deployment_action (from inputs.action), preview_url_path, and preview_file_path. An attacker-controlled input containing newlines could inject arbitrary environment variable assignments into $GITHUB_ENV or output entries into $GITHUB_OUTPUT.
 
 Locations:
 
-- `lib/main.sh:44`
+- `lib/main.sh:43`
+- `lib/main.sh:53`
 
 ### static-inline-injection (severity: high)
 
@@ -129,7 +151,17 @@ Locations:
 
 **Notes:**
 
-Fixed all script injection findings in action.yml by moving ${{ }} expressions from run: shell strings into env: blocks and referencing them as plain environment variables. Fixed github-env-injection in lib/main.sh by sanitizing all user-controlled values with `printf '%s' ... | tr -d '\n\r'` before writing to $GITHUB_ENV and $GITHUB_OUTPUT.
+Fixed all 16 findings across action.yml and lib/main.sh:
+
+1. action.yml - 'Wait for preview deployment on GitHub Pages': Moved ${{ inputs.deploy-repository }}, ${{ steps.deployed-commit.outputs.deployed_commit_sha }}, ${{ inputs.preview-branch }}, ${{ inputs.token }} to env: block as WAIT_DEPLOY_REPO, WAIT_DEPLOYED_SHA, WAIT_PREVIEW_BRANCH, WAIT_TOKEN.
+
+2. action.yml - 'Generate comment content for deployment': Moved all 8 ${{ }} expressions to env: block with GC_ prefix (GC_ACTION_REPOSITORY, GC_ACTION_VERSION, GC_PREVIEW_URL, GC_PREVIEW_BRANCH, GC_SERVER_URL, GC_DEPLOY_REPOSITORY, GC_ACTION_START_TIME, GC_QR_CODE).
+
+3. action.yml - 'Wait for preview removal on GitHub Pages': Same fix as #1 but for removal step, using WAIT_REMOVED_SHA.
+
+4. action.yml - 'Generate comment content for removal': Same fix as #2 but for removal step, using GC_QR_CODE_PROVIDER for env.qr_code_provider.
+
+5. lib/main.sh - Added sanitization of all values written to $GITHUB_ENV and $GITHUB_OUTPUT using printf '%s' "$VAR" | tr -d '\n\r' to prevent newline injection attacks from attacker-controlled inputs.
 
 ### Iteration 2
 
@@ -137,5 +169,5 @@ Fixed all script injection findings in action.yml by moving ${{ }} expressions f
 
 **Notes:**
 
-Fixed both heredoc injection vulnerabilities in action.yml at the 'Generate comment content for deployment' and 'Generate comment content for removal' steps. Replaced the static 'EOF' heredoc delimiter with a cryptographically random 32-character hex string generated via `DELIM=$(openssl rand -hex 16)`. This prevents an attacker from injecting a line exactly matching 'EOF' in user-controlled inputs (qr-code, preview-branch, deploy-repository) to terminate the heredoc early and inject arbitrary key=value pairs into $GITHUB_OUTPUT. Also fixed $GITHUB_OUTPUT to be properly quoted in both steps.
+Fixed both 'Generate comment content for deployment' (line 175) and 'Generate comment content for removal' (line 250) steps in action.yml. Replaced the static `EOF` heredoc delimiter used when writing to $GITHUB_OUTPUT with a randomly-generated delimiter: `DELIM="EOF_$(openssl rand -hex 16)"`. This prevents an attacker from injecting arbitrary key=value pairs into $GITHUB_OUTPUT by crafting user-controlled inputs (preview-branch, deploy-repository, qr-code) that contain a newline followed by a line matching the delimiter.
 

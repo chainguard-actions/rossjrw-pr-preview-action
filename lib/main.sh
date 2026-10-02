@@ -35,10 +35,7 @@ action_version=$("$GITHUB_ACTION_PATH/lib/find-current-git-tag.sh" -p "$action_r
 action_start_timestamp=$(date '+%s')
 action_start_time=$(date '+%Y-%m-%d %H:%M %Z')
 
-# Sanitize user-controlled values before writing to GITHUB_ENV/GITHUB_OUTPUT
-safe_empty_dir_path=$(mktemp -d)
-safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')
-safe_preview_file_path=$(printf '%s' "$preview_file_path" | tr -d '\n\r')
+# Sanitize values that may come from user-controlled inputs before writing to GITHUB_ENV/GITHUB_OUTPUT
 safe_pages_base_url=$(printf '%s' "$pages_base_url" | tr -d '\n\r')
 safe_preview_url_path=$(printf '%s' "$preview_url_path" | tr -d '\n\r')
 safe_preview_url=$(printf '%s' "https://$pages_base_url/$preview_url_path/" | tr -d '\n\r')
@@ -46,10 +43,12 @@ safe_action_repository=$(printf '%s' "$action_repository" | tr -d '\n\r')
 safe_action_version=$(printf '%s' "$action_version" | tr -d '\n\r')
 safe_action_start_time=$(printf '%s' "$action_start_time" | tr -d '\n\r')
 safe_action_start_timestamp=$(printf '%s' "$action_start_timestamp" | tr -d '\n\r')
+safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')
+safe_preview_file_path=$(printf '%s' "$preview_file_path" | tr -d '\n\r')
 
 # Export variables for later use by this action
 {
-    echo "empty_dir_path=$safe_empty_dir_path"
+    echo "empty_dir_path=$(mktemp -d)"
     echo "deployment_action=$safe_deployment_action"
 
     echo "preview_file_path=$safe_preview_file_path"

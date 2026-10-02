@@ -158,7 +158,7 @@ runs:
     # DEPLOYMENT
     - name: Deploy preview directory
       if: env.deployment_action == 'deploy'
-      uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+      uses: chainguard-actions/jamesives-github-pages-deploy-action@c3c5f607cbced98675ff7a34ef04b3d7839b9e5b # v4.7.4
       with:
         token: ${{ inputs.token }}
         repository-name: ${{ inputs.deploy-repository }}
@@ -184,13 +184,13 @@ runs:
         (inputs.wait-for-pages-deployment == 'true' || inputs.wait-for-pages-deployment == true) &&
         env.deployment_status == 'success'
       env:
-        DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
-        DEPLOYED_COMMIT_SHA: ${{ steps.deployed-commit.outputs.deployed_commit_sha }}
-        PREVIEW_BRANCH: ${{ inputs.preview-branch }}
-        DEPLOY_TOKEN: ${{ inputs.token }}
+        WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
+        WAIT_DEPLOYED_SHA: ${{ steps.deployed-commit.outputs.deployed_commit_sha }}
+        WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$DEPLOY_REPOSITORY" "$DEPLOYED_COMMIT_SHA" "$PREVIEW_BRANCH" "$DEPLOY_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_DEPLOYED_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Generate comment content for deployment
       id: deploy-comment
@@ -199,31 +199,31 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped')
       env:
-        INPUT_ACTION_REPOSITORY: ${{ env.action_repository }}
-        INPUT_ACTION_VERSION: ${{ env.action_version }}
-        INPUT_PREVIEW_URL: ${{ env.preview_url }}
-        INPUT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
-        INPUT_SERVER_URL: ${{ github.server_url }}
-        INPUT_DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
-        INPUT_ACTION_START_TIME: ${{ env.action_start_time }}
-        INPUT_QR_CODE: ${{ inputs.qr-code }}
+        GC_ACTION_REPOSITORY: ${{ env.action_repository }}
+        GC_ACTION_VERSION: ${{ env.action_version }}
+        GC_PREVIEW_URL: ${{ env.preview_url }}
+        GC_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        GC_SERVER_URL: ${{ github.server_url }}
+        GC_DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
+        GC_ACTION_START_TIME: ${{ env.action_start_time }}
+        GC_QR_CODE: ${{ inputs.qr-code }}
       run: |
         CONTENT=$($GITHUB_ACTION_PATH/lib/generate-comment.sh \
-          "$INPUT_ACTION_REPOSITORY" \
-          "$INPUT_ACTION_VERSION" \
-          "$INPUT_PREVIEW_URL" \
-          "$INPUT_PREVIEW_BRANCH" \
-          "$INPUT_SERVER_URL" \
-          "$INPUT_DEPLOY_REPOSITORY" \
-          "$INPUT_ACTION_START_TIME" \
+          "$GC_ACTION_REPOSITORY" \
+          "$GC_ACTION_VERSION" \
+          "$GC_PREVIEW_URL" \
+          "$GC_PREVIEW_BRANCH" \
+          "$GC_SERVER_URL" \
+          "$GC_DEPLOY_REPOSITORY" \
+          "$GC_ACTION_START_TIME" \
           "deploy" \
-          "$INPUT_QR_CODE")
-        DELIM=$(openssl rand -hex 16)
+          "$GC_QR_CODE")
+        DELIM="EOF_$(openssl rand -hex 16)"
         {
-          echo "content<<${DELIM}"
+          echo "content<<$DELIM"
           echo "$CONTENT"
-          echo "${DELIM}"
-        } >> "$GITHUB_OUTPUT"
+          echo "$DELIM"
+        } >> $GITHUB_OUTPUT
       shell: bash
     - name: Leave a comment after deployment
       if: |
@@ -231,14 +231,14 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped') &&
         steps.deploy-comment.outcome == 'success'
-      uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+      uses: chainguard-actions/marocchino-sticky-pull-request-comment@baa3604b440cdc9e8384074a335b91fdb9aaded7 # v2.9.2
       with:
         header: pr-preview
         message: ${{ steps.deploy-comment.outputs.content }}
     # REMOVAL
     - name: Remove preview directory
       if: env.deployment_action == 'remove'
-      uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+      uses: chainguard-actions/jamesives-github-pages-deploy-action@c3c5f607cbced98675ff7a34ef04b3d7839b9e5b # v4.7.4
       with:
         token: ${{ inputs.token }}
         repository-name: ${{ inputs.deploy-repository }}
@@ -264,13 +264,13 @@ runs:
         (inputs.wait-for-pages-deployment == 'true' || inputs.wait-for-pages-deployment == true) &&
         env.deployment_status == 'success'
       env:
-        DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
-        REMOVED_COMMIT_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
-        PREVIEW_BRANCH: ${{ inputs.preview-branch }}
-        DEPLOY_TOKEN: ${{ inputs.token }}
+        WAIT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
+        WAIT_REMOVED_SHA: ${{ steps.removed-commit.outputs.deployed_commit_sha }}
+        WAIT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        WAIT_TOKEN: ${{ inputs.token }}
       run: |
         source $GITHUB_ACTION_PATH/lib/wait-for-pages-deployment.sh
-        wait_for_pages_deployment "$DEPLOY_REPOSITORY" "$REMOVED_COMMIT_SHA" "$PREVIEW_BRANCH" "$DEPLOY_TOKEN"
+        wait_for_pages_deployment "$WAIT_DEPLOY_REPO" "$WAIT_REMOVED_SHA" "$WAIT_PREVIEW_BRANCH" "$WAIT_TOKEN"
       shell: bash
     - name: Generate comment content for removal
       id: remove-comment
@@ -279,31 +279,31 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped')
       env:
-        INPUT_ACTION_REPOSITORY: ${{ env.action_repository }}
-        INPUT_ACTION_VERSION: ${{ env.action_version }}
-        INPUT_PREVIEW_URL: ${{ env.preview_url }}
-        INPUT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
-        INPUT_SERVER_URL: ${{ github.server_url }}
-        INPUT_DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
-        INPUT_ACTION_START_TIME: ${{ env.action_start_time }}
-        INPUT_QR_CODE_PROVIDER: ${{ env.qr_code_provider }}
+        GC_ACTION_REPOSITORY: ${{ env.action_repository }}
+        GC_ACTION_VERSION: ${{ env.action_version }}
+        GC_PREVIEW_URL: ${{ env.preview_url }}
+        GC_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        GC_SERVER_URL: ${{ github.server_url }}
+        GC_DEPLOY_REPOSITORY: ${{ inputs.deploy-repository }}
+        GC_ACTION_START_TIME: ${{ env.action_start_time }}
+        GC_QR_CODE_PROVIDER: ${{ env.qr_code_provider }}
       run: |
         CONTENT=$($GITHUB_ACTION_PATH/lib/generate-comment.sh \
-          "$INPUT_ACTION_REPOSITORY" \
-          "$INPUT_ACTION_VERSION" \
-          "$INPUT_PREVIEW_URL" \
-          "$INPUT_PREVIEW_BRANCH" \
-          "$INPUT_SERVER_URL" \
-          "$INPUT_DEPLOY_REPOSITORY" \
-          "$INPUT_ACTION_START_TIME" \
+          "$GC_ACTION_REPOSITORY" \
+          "$GC_ACTION_VERSION" \
+          "$GC_PREVIEW_URL" \
+          "$GC_PREVIEW_BRANCH" \
+          "$GC_SERVER_URL" \
+          "$GC_DEPLOY_REPOSITORY" \
+          "$GC_ACTION_START_TIME" \
           "remove" \
-          "$INPUT_QR_CODE_PROVIDER")
-        DELIM=$(openssl rand -hex 16)
+          "$GC_QR_CODE_PROVIDER")
+        DELIM="EOF_$(openssl rand -hex 16)"
         {
-          echo "content<<${DELIM}"
+          echo "content<<$DELIM"
           echo "$CONTENT"
-          echo "${DELIM}"
-        } >> "$GITHUB_OUTPUT"
+          echo "$DELIM"
+        } >> $GITHUB_OUTPUT
       shell: bash
     - name: Leave a comment after removal
       if: |
@@ -311,7 +311,7 @@ runs:
         (inputs.comment == 'true' || inputs.comment == true) &&
         (env.deployment_status == 'success' || env.deployment_status == 'skipped') &&
         steps.remove-comment.outcome == 'success'
-      uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+      uses: chainguard-actions/marocchino-sticky-pull-request-comment@baa3604b440cdc9e8384074a335b91fdb9aaded7 # v2.9.2
       with:
         header: pr-preview
         message: ${{ steps.remove-comment.outputs.content }}
