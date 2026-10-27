@@ -1,0 +1,30 @@
+name: Test deprecated custom-url is used as pages-base-url
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          action: none
+          pr-number: "5"
+          custom-url: preview.example.org
+      - name: Assert outputs
+        env:
+          BASE_URL: ${{ steps.action.outputs.pages-base-url }}
+          URL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "pages-base-url: $BASE_URL"
+          echo "preview-url: $URL"
+          if [ "$BASE_URL" != "preview.example.org" ]; then
+            echo "FAIL: expected pages-base-url 'preview.example.org'"
+            exit 1
+          fi
+          if [ "$URL" != "https://preview.example.org/pr-preview/pr-5/" ]; then
+            echo "FAIL: unexpected preview-url"
+            exit 1
+          fi
+          echo "PASS"

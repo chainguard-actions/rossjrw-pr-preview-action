@@ -1,0 +1,31 @@
+name: Test pages-base-path is stripped from preview URL path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          action: none
+          pr-number: "7"
+          umbrella-dir: docs/pr-preview
+          pages-base-path: docs
+          pages-base-url: example.com
+      - name: Assert outputs
+        env:
+          DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
+          URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+          URL: ${{ steps.action.outputs.preview-url }}
+        run: |
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          echo "preview-url-path: $URL_PATH"
+          echo "preview-url: $URL"
+          fail=0
+          [ "$DEPLOYMENT_ACTION" = "none" ] || { echo "FAIL: deployment-action"; fail=1; }
+          [ "$URL_PATH" = "pr-preview/pr-7" ] || { echo "FAIL: preview-url-path"; fail=1; }
+          [ "$URL" = "https://example.com/pr-preview/pr-7/" ] || { echo "FAIL: preview-url"; fail=1; }
+          [ "$fail" = "0" ] || exit 1
+          echo "PASS"

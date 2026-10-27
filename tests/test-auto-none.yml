@@ -1,0 +1,43 @@
+name: Test auto action resolves to none on non-PR event
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          pr-number: "42"
+          pages-base-url: example.github.io/repo
+      - name: Assert outputs
+        env:
+          DEPLOYMENT_ACTION: ${{ steps.action.outputs.deployment-action }}
+          BASE_URL: ${{ steps.action.outputs.pages-base-url }}
+          URL_PATH: ${{ steps.action.outputs.preview-url-path }}
+          URL: ${{ steps.action.outputs.preview-url }}
+          DEPRECATED_URL: ${{ steps.action.outputs.deployment-url }}
+          TS: ${{ steps.action.outputs.action-start-timestamp }}
+          TIME: ${{ steps.action.outputs.action-start-time }}
+          SHA: ${{ steps.action.outputs.deployed-commit-sha }}
+        run: |
+          echo "deployment-action: $DEPLOYMENT_ACTION"
+          echo "pages-base-url: $BASE_URL"
+          echo "preview-url-path: $URL_PATH"
+          echo "preview-url: $URL"
+          echo "deployment-url: $DEPRECATED_URL"
+          echo "timestamp: $TS"
+          echo "time: $TIME"
+          echo "deployed-commit-sha: $SHA"
+          fail=0
+          [ "$DEPLOYMENT_ACTION" = "none" ] || { echo "FAIL: deployment-action"; fail=1; }
+          [ "$BASE_URL" = "example.github.io/repo" ] || { echo "FAIL: pages-base-url"; fail=1; }
+          [ "$URL_PATH" = "pr-preview/pr-42" ] || { echo "FAIL: preview-url-path"; fail=1; }
+          [ "$URL" = "https://example.github.io/repo/pr-preview/pr-42/" ] || { echo "FAIL: preview-url"; fail=1; }
+          [ "$DEPRECATED_URL" = "$URL" ] || { echo "FAIL: deployment-url should equal preview-url"; fail=1; }
+          echo "$TS" | grep -qE '^[0-9]+$' || { echo "FAIL: timestamp not numeric"; fail=1; }
+          [ -n "$TIME" ] || { echo "FAIL: start time empty"; fail=1; }
+          [ -z "$SHA" ] || { echo "FAIL: deployed-commit-sha should be empty when nothing deployed"; fail=1; }
+          [ "$fail" = "0" ] || exit 1
+          echo "PASS"

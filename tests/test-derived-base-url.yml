@@ -1,0 +1,36 @@
+name: Test pages-base-url derived from deploy-repository
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: project
+        uses: .
+        with:
+          action: none
+          pr-number: "11"
+          deploy-repository: myorg/myrepo
+      - id: userpages
+        uses: .
+        with:
+          action: none
+          pr-number: "12"
+          deploy-repository: myorg/myorg.github.io
+      - name: Assert outputs
+        env:
+          P_BASE: ${{ steps.project.outputs.pages-base-url }}
+          P_URL: ${{ steps.project.outputs.preview-url }}
+          U_BASE: ${{ steps.userpages.outputs.pages-base-url }}
+          U_URL: ${{ steps.userpages.outputs.preview-url }}
+        run: |
+          echo "project base: $P_BASE / $P_URL"
+          echo "user pages base: $U_BASE / $U_URL"
+          fail=0
+          [ "$P_BASE" = "myorg.github.io/myrepo" ] || { echo "FAIL: project base"; fail=1; }
+          [ "$P_URL" = "https://myorg.github.io/myrepo/pr-preview/pr-11/" ] || { echo "FAIL: project url"; fail=1; }
+          [ "$U_BASE" = "myorg.github.io" ] || { echo "FAIL: user pages base"; fail=1; }
+          [ "$U_URL" = "https://myorg.github.io/pr-preview/pr-12/" ] || { echo "FAIL: user pages url"; fail=1; }
+          [ "$fail" = "0" ] || exit 1
+          echo "PASS"
