@@ -171,7 +171,7 @@ runs:
 
         - name: Deploy preview directory
           if: env.deployment_action == 'deploy'
-          uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+          uses: chainguard-actions/jamesives-github-pages-deploy-action@c3c5f607cbced98675ff7a34ef04b3d7839b9e5b # v4.7.4
           with:
               token: ${{ inputs.token }}
               repository-name: ${{ inputs.deploy-repository }}
@@ -244,7 +244,7 @@ runs:
               (inputs.comment == 'true' || inputs.comment == true) &&
               (env.deployment_status == 'success' || env.deployment_status == 'skipped') &&
               steps.deploy-comment.outcome == 'success'
-          uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+          uses: chainguard-actions/marocchino-sticky-pull-request-comment@baa3604b440cdc9e8384074a335b91fdb9aaded7 # v2.9.2
           with:
               header: pr-preview
               message: ${{ steps.deploy-comment.outputs.content }}
@@ -253,7 +253,7 @@ runs:
 
         - name: Remove preview directory
           if: env.deployment_action == 'remove'
-          uses: JamesIves/github-pages-deploy-action@4a3abc783e1a24aeb44c16e869ad83caf6b4cc23 # v4.7.4
+          uses: chainguard-actions/jamesives-github-pages-deploy-action@c3c5f607cbced98675ff7a34ef04b3d7839b9e5b # v4.7.4
           with:
               token: ${{ inputs.token }}
               repository-name: ${{ inputs.deploy-repository }}
@@ -330,7 +330,7 @@ runs:
               (inputs.comment == 'true' || inputs.comment == true) &&
               (env.deployment_status == 'success' || env.deployment_status == 'skipped') &&
               steps.remove-comment.outcome == 'success'
-          uses: marocchino/sticky-pull-request-comment@67d0dec7b07ed060a405f9b2a64b8ab319fdd7db # v2.9.2
+          uses: chainguard-actions/marocchino-sticky-pull-request-comment@baa3604b440cdc9e8384074a335b91fdb9aaded7 # v2.9.2
           with:
               header: pr-preview
               message: ${{ steps.remove-comment.outputs.content }}
