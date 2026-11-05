@@ -164,7 +164,7 @@ runs:
               deployment_repository: ${{ inputs.deploy-repository }}
               token: ${{ inputs.token }}
               deprecated_custom_url: ${{ inputs.custom-url }}
-          run: $GITHUB_ACTION_PATH/lib/main.sh
+          run: '"$GITHUB_ACTION_PATH/lib/main.sh"'
           shell: bash
 
         # DEPLOYMENT
@@ -215,19 +215,23 @@ runs:
               (inputs.comment == 'true' || inputs.comment == true) &&
               (env.deployment_status == 'success' || env.deployment_status == 'skipped')
           env:
+              COMMENT_ACTION_REPO: ${{ env.action_repository }}
+              COMMENT_ACTION_VERSION: ${{ env.action_version }}
+              COMMENT_PREVIEW_URL: ${{ env.preview_url }}
               COMMENT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
               COMMENT_SERVER_URL: ${{ github.server_url }}
               COMMENT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
+              COMMENT_START_TIME: ${{ env.action_start_time }}
               COMMENT_QR_CODE: ${{ inputs.qr-code }}
           run: |
               CONTENT=$("$GITHUB_ACTION_PATH/lib/generate-comment.sh" \
-                "$action_repository" \
-                "$action_version" \
-                "$preview_url" \
+                "$COMMENT_ACTION_REPO" \
+                "$COMMENT_ACTION_VERSION" \
+                "$COMMENT_PREVIEW_URL" \
                 "$COMMENT_PREVIEW_BRANCH" \
                 "$COMMENT_SERVER_URL" \
                 "$COMMENT_DEPLOY_REPO" \
-                "$action_start_time" \
+                "$COMMENT_START_TIME" \
                 "deploy" \
                 "$COMMENT_QR_CODE")
               EOF_DELIM="EOF_$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
@@ -304,7 +308,7 @@ runs:
               COMMENT_SERVER_URL: ${{ github.server_url }}
               COMMENT_DEPLOY_REPO: ${{ inputs.deploy-repository }}
               COMMENT_START_TIME: ${{ env.action_start_time }}
-              COMMENT_QR_CODE: ${{ env.qr_code_provider }}
+              COMMENT_QR_CODE: ${{ inputs.qr-code }}
           run: |
               CONTENT=$("$GITHUB_ACTION_PATH/lib/generate-comment.sh" \
                 "$COMMENT_ACTION_REPO" \
