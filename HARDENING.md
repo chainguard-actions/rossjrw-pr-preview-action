@@ -4,19 +4,27 @@
 
 > This file was generated automatically by the hardening agent.
 
-**Policy SHA:** `d636be7e43ef829af6e853da6b3c7566db9f72fe`
+**Policy SHA:** `374911c4be584df24e6da57af2d990570ef0f859`
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
 **Harden Agent Version:** `2`
 
-Action **rossjrw--pr-preview-action/v1.8.1** was hardened automatically. 16 finding(s) were identified and resolved across 2 iteration(s).
+Action **rossjrw--pr-preview-action/v1.8.1** was hardened automatically. 20 finding(s) were identified and resolved across 1 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Rule (a): The 'Wait for preview deployment on GitHub Pages' run: block directly interpolates ${{ inputs.deploy-repository }}, ${{ steps.deployed-commit.outputs.deployed_commit_sha }}, ${{ inputs.preview-branch }}, and ${{ inputs.token }} inside the shell command string. YAML template substitution occurs before the shell parses the command, allowing an attacker-controlled value to inject arbitrary shell commands. Offending line: `wait_for_pages_deployment "${{ inputs.deploy-repository }}" "${{ steps.deployed-commit.outputs.deployed_commit_sha }}" "${{ inputs.preview-branch }}" "${{ inputs.token }}"`
+Sub-rule (a): expressions are placed straight into the run: script in the 'Wait for preview deployment on GitHub Pages' step: `wait_for_pages_deployment "${{ inputs.deploy-repository }}" "${{ steps.deployed-commit.outputs.deployed_commit_sha }}" "${{ inputs.preview-branch }}" "${{ inputs.token }}"`. Pass these through env: variables and quote them.
+
+Locations:
+
+- `action.yml:186`
+
+### script-injection (severity: high)
+
+Sub-rule (a): the 'Generate comment content for deployment' step puts ${{ env.action_repository }}, ${{ env.action_version }}, ${{ env.preview_url }}, ${{ inputs.preview-branch }}, ${{ github.server_url }}, ${{ inputs.deploy-repository }}, ${{ env.action_start_time }} and ${{ inputs.qr-code }} straight into the run: script as arguments to generate-comment.sh.
 
 Locations:
 
@@ -24,36 +32,45 @@ Locations:
 
 ### script-injection (severity: high)
 
-Rule (a): The 'Generate comment content for deployment' run: block directly interpolates multiple ${{ }} expressions inside shell command strings, including ${{ env.action_repository }}, ${{ env.action_version }}, ${{ env.preview_url }}, ${{ inputs.preview-branch }}, ${{ github.server_url }}, ${{ inputs.deploy-repository }}, ${{ env.action_start_time }}, and ${{ inputs.qr-code }}. YAML template substitution occurs before the shell parses the command, allowing attacker-controlled values to inject arbitrary shell commands.
+Sub-rule (a): expressions are placed straight into the run: script in the 'Wait for preview removal on GitHub Pages' step: `wait_for_pages_deployment "${{ inputs.deploy-repository }}" "${{ steps.removed-commit.outputs.deployed_commit_sha }}" "${{ inputs.preview-branch }}" "${{ inputs.token }}"`.
+
+Locations:
+
+- `action.yml:257`
+
+### script-injection (severity: high)
+
+Sub-rule (a): the 'Generate comment content for removal' step puts ${{ env.action_repository }}, ${{ env.action_version }}, ${{ env.preview_url }}, ${{ inputs.preview-branch }}, ${{ github.server_url }}, ${{ inputs.deploy-repository }}, ${{ env.action_start_time }} and ${{ env.qr_code_provider }} straight into the run: script.
+
+Locations:
+
+- `action.yml:267`
+
+### github-env-injection (severity: high)
+
+The 'Setup preview environment' step (action.yml line 150) runs lib/main.sh. That script writes input-derived values to $GITHUB_ENV and $GITHUB_OUTPUT with nothing stripping newlines first (no printf '%s' | tr -d '\n\r'). The values are preview_file_path (from inputs.umbrella-dir and pr-number), pages_base_url (from inputs.pages-base-url or custom-url), preview_url_path, preview_url, action_repository (github.action_repository) and deployment_action (inputs.action). A value containing a newline could inject extra environment variables or outputs.
+
+Locations:
+
+- `lib/main.sh:51`
+- `lib/main.sh:63`
+- `action.yml:150`
+
+### github-env-injection (severity: high)
+
+The 'Generate comment content for deployment' step writes multi-line $CONTENT to $GITHUB_OUTPUT between fixed heredoc delimiters (`echo "content<<EOF"` ... `echo "EOF"`). CONTENT is built from inputs such as preview-branch, deploy-repository, qr-code and preview_url. A value containing a line reading 'EOF' ends the block early and can inject extra outputs. Use a random delimiter, e.g. one built from /dev/urandom.
 
 Locations:
 
 - `action.yml:207`
 
-### script-injection (severity: high)
-
-Rule (a): The 'Wait for preview removal on GitHub Pages' run: block directly interpolates ${{ inputs.deploy-repository }}, ${{ steps.removed-commit.outputs.deployed_commit_sha }}, ${{ inputs.preview-branch }}, and ${{ inputs.token }} inside the shell command string. YAML template substitution occurs before the shell parses the command, allowing an attacker-controlled value to inject arbitrary shell commands. Offending line: `wait_for_pages_deployment "${{ inputs.deploy-repository }}" "${{ steps.removed-commit.outputs.deployed_commit_sha }}" "${{ inputs.preview-branch }}" "${{ inputs.token }}"`
-
-Locations:
-
-- `action.yml:265`
-
-### script-injection (severity: high)
-
-Rule (a): The 'Generate comment content for removal' run: block directly interpolates multiple ${{ }} expressions inside shell command strings, including ${{ env.action_repository }}, ${{ env.action_version }}, ${{ env.preview_url }}, ${{ inputs.preview-branch }}, ${{ github.server_url }}, ${{ inputs.deploy-repository }}, ${{ env.action_start_time }}, and ${{ env.qr_code_provider }}. YAML template substitution occurs before the shell parses the command, allowing attacker-controlled values to inject arbitrary shell commands.
-
-Locations:
-
-- `action.yml:276`
-
 ### github-env-injection (severity: high)
 
-lib/main.sh writes multiple values derived from inherited env vars (set from inputs.* and github.* context via the env: block of the calling step) to $GITHUB_ENV and $GITHUB_OUTPUT without the required sanitization step (printf '%s' ... | tr -d '\n\r'). Variables written include: pages_base_url (from inputs.pages-base-url), preview_url (constructed from pages_base_url), action_repository (from github.action_repository/github.repository), action_version (from action_ref), action_start_time, deployment_action (from inputs.action), preview_url_path, and preview_file_path. An attacker-controlled input containing newlines could inject arbitrary environment variable assignments into $GITHUB_ENV or output entries into $GITHUB_OUTPUT.
+The 'Generate comment content for removal' step writes multi-line $CONTENT, which is built from input-derived values, to $GITHUB_OUTPUT between fixed heredoc delimiters (`content<<EOF` / `EOF`). A value containing a line reading 'EOF' ends the block early and can inject extra outputs.
 
 Locations:
 
-- `lib/main.sh:43`
-- `lib/main.sh:53`
+- `action.yml:278`
 
 ### static-inline-injection (severity: high)
 
@@ -143,31 +160,209 @@ Locations:
 
 - `action.yml:273`
 
+### prior-fix (severity: high)
+
+Carried forward from this version's previous harden, which fixed it; fix it again unless the code no longer has the problem. The previous harden changed action.yml without recording a finding for it, and this analysis reported nothing there. Re-apply its security changes unless the code no longer needs them. The previous patch:
+```diff
+diff --git a/action.yml b/action.yml
+index 5e6751d..634fd54 100644
+--- a/action.yml
++++ b/action.yml
+@@ -1,293 +1,317 @@
+ name: Deploy PR Preview
+ author: Ross Williams
+ description: >
+-    Deploy a pull request preview to GitHub Pages, similar to Vercel and Netlify.
+-
++  Deploy a pull request preview to GitHub Pages, similar to Vercel and Netlify.
+ 
+ branding:
+-    icon: git-pull-request
+-    color: yellow
+-
++  icon: git-pull-request
++  color: yellow
+ inputs:
+-    token:
+-        description: >
+-            The token to use for the deployment. Default is GITHUB_TOKEN in the current repository. If you need more permissions for things such as deploying to another repository, you can add a Personal Access Token (PAT).
+-
+-
+-        required: false
+-        default: ${{ github.token }}
+-    preview-branch:
+-        description: Branch on which the previews will be deployed.
+-        required: false
+-        default: gh-pages
+-    umbrella-dir:
+-        description: Path to the directory containing all previews.
+-        required: false
+-        default: pr-preview
+-    pages-base-url:
+-        description: URL of the repo's GitHub Pages site.
+-        required: false
+-        default: ""
+-    pages-base-path:
+-        description: Path that GitHub Pages is served from.
+-        required: false
+-        default: ""
+-    source-dir:
+-        description: Directory containing files to deploy.
+-        required: false
+-        default: .
+-    pr-number:
+-        description: >
+-            The PR number to use for the preview path. Defaults to the PR number from the GitHub event context. Override this for testing or when not triggered by a pull_request event.
+-
++  token:
++    description: >
++      The token to use for the deployment. Default is GITHUB_TOKEN in the current repository. If you need more permissions for things such as deploying to another repository, you can add a Personal Access Token (PAT).
+ 
+-        required: false
+-        default: ""
+-    deploy-repository:
+-        description: >
+-            The GitHub repository to deploy the preview to. This should be formatted like `<org name>/<repo name>`, e.g. `rossjrw/pr-preview-action`. Defaults to the current repository.
+-            
+-            You will need to add a Personal Access Token (PAT) in the `token` input in order to allow the action running in one repository to make changes to another repository.
++    required: false
++    default: ${{ github.token }}
++  preview-branch:
++    description: Branch on which the previews will be deployed.
++    required: false
++    default: gh-pages
++  umbrella-dir:
++    description: Path to the directory containing all previews.
++    required: false
++    default: pr-preview
++  pages-base-url:
++    description: URL of the repo's GitHub Pages site.
++    required: false
++    default: ""
++  pages-base-path:
++    description: Path that GitHub Pages is served from.
++    required: false
++    default: ""
++  source-dir:
++    description: Directory containing files to deploy.
++    required: false
++    default: .
++  pr-number:
++    description: >
++      The PR number to use for the preview path. Defaults to the PR number from the GitHub event context. Override this for testing or when not triggered by a pull_request event.
+ 
++    required: false
++    default: ""
++  deploy-repository:
++    description: >
++      The GitHub repository to deploy the preview to. This should be formatted like `<org name>/<repo name>`, e.g. `rossjrw/pr-preview-action`. Defaults to the current repository.
+ 
+-        required: false
+-        default: ${{ github.repository }}
+-    wait-for-pages-deployment:
+-        description: >
+-            Whether to wait for GitHub Pages deployment before continuing, e.g. to ensure the preview URL is actually accessible when the sticky comment is posted.
++      You will need to add a Personal Access Token (PAT) in the `token` input in order to allow the action running in one repository to make changes to another repository.
+ 
++    required: false
++    default: ${{ github.repository }}
++  wait-for-pages-deployment:
++    descr
+... (truncated)
+```
+
+Locations:
+
+- `action.yml`
+
+### prior-fix (severity: high)
+
+Carried forward from this version's previous harden, which fixed it; fix it again unless the code no longer has the problem. The previous harden changed lib/main.sh without recording a finding for it, and this analysis reported nothing there. Re-apply its security changes unless the code no longer needs them. The previous patch:
+```diff
+diff --git a/lib/main.sh b/lib/main.sh
+index 3dad8ab..83bc777 100755
+--- a/lib/main.sh
++++ b/lib/main.sh
+@@ -35,30 +35,41 @@ action_version=$("$GITHUB_ACTION_PATH/lib/find-current-git-tag.sh" -p "$action_r
+ action_start_timestamp=$(date '+%s')
+ action_start_time=$(date '+%Y-%m-%d %H:%M %Z')
+ 
++# Sanitize values that may come from user-controlled inputs before writing to GITHUB_ENV/GITHUB_OUTPUT
++safe_pages_base_url=$(printf '%s' "$pages_base_url" | tr -d '\n\r')
++safe_preview_url_path=$(printf '%s' "$preview_url_path" | tr -d '\n\r')
++safe_preview_url=$(printf '%s' "https://$pages_base_url/$preview_url_path/" | tr -d '\n\r')
++safe_action_repository=$(printf '%s' "$action_repository" | tr -d '\n\r')
++safe_action_version=$(printf '%s' "$action_version" | tr -d '\n\r')
++safe_action_start_time=$(printf '%s' "$action_start_time" | tr -d '\n\r')
++safe_action_start_timestamp=$(printf '%s' "$action_start_timestamp" | tr -d '\n\r')
++safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')
++safe_preview_file_path=$(printf '%s' "$preview_file_path" | tr -d '\n\r')
++
+ # Export variables for later use by this action
+ {
+     echo "empty_dir_path=$(mktemp -d)"
+-    echo "deployment_action=$deployment_action"
++    echo "deployment_action=$safe_deployment_action"
+ 
+-    echo "preview_file_path=$preview_file_path"
+-    echo "pages_base_url=$pages_base_url"
+-    echo "preview_url_path=$preview_url_path"
+-    echo "preview_url=https://$pages_base_url/$preview_url_path/"
++    echo "preview_file_path=$safe_preview_file_path"
++    echo "pages_base_url=$safe_pages_base_url"
++    echo "preview_url_path=$safe_preview_url_path"
++    echo "preview_url=$safe_preview_url"
+ 
+-    echo "action_repository=$action_repository"
+-    echo "action_version=$action_version"
+-    echo "action_start_time=$action_start_time"
++    echo "action_repository=$safe_action_repository"
++    echo "action_version=$safe_action_version"
++    echo "action_start_time=$safe_action_start_time"
+ } >> "$GITHUB_ENV"
+ 
+ # Export variables for use by later actions in user workflow
+ {
+-    echo "deployment_action=$deployment_action"
++    echo "deployment_action=$safe_deployment_action"
+ 
+-    echo "pages_base_url=$pages_base_url"
+-    echo "preview_url_path=$preview_url_path"
+-    echo "preview_url=https://$pages_base_url/$preview_url_path/"
++    echo "pages_base_url=$safe_pages_base_url"
++    echo "preview_url_path=$safe_preview_url_path"
++    echo "preview_url=$safe_preview_url"
+ 
+-    echo "action_version=$action_version"
+-    echo "action_start_timestamp=$action_start_timestamp"
+-    echo "action_start_time=$action_start_time"
++    echo "action_version=$safe_action_version"
++    echo "action_start_timestamp=$safe_action_start_timestamp"
++    echo "action_start_time=$safe_action_start_time"
+ } >> "$GITHUB_OUTPUT"
+
+```
+
+Locations:
+
+- `lib/main.sh`
+
 ## Iteration Notes
 
 ### Iteration 1
 
-**Fixes applied:** script-injection, static-inline-injection, github-env-injection
+**Fixes applied:** script-injection, static-inline-injection, github-env-injection, prior-fix
 
 **Notes:**
 
-Fixed all 16 findings across action.yml and lib/main.sh:
+I fixed every finding in this pass and re-applied the changes from the previous harden. Nothing was run to test these changes.
 
-1. action.yml - 'Wait for preview deployment on GitHub Pages': Moved ${{ inputs.deploy-repository }}, ${{ steps.deployed-commit.outputs.deployed_commit_sha }}, ${{ inputs.preview-branch }}, ${{ inputs.token }} to env: block as WAIT_DEPLOY_REPO, WAIT_DEPLOYED_SHA, WAIT_PREVIEW_BRANCH, WAIT_TOKEN.
+**action.yml**
+- The two 'Wait for ... on GitHub Pages' steps no longer put workflow values straight into the script. The repository, commit SHA, branch and token are now passed as environment variables (WAIT_DEPLOY_REPO, WAIT_COMMIT_SHA, WAIT_BRANCH, WAIT_TOKEN). The script uses them in double quotes.
+- The two 'Generate comment content' steps pass all eight values to generate-comment.sh the same way, as C_* environment variables. The arguments are in the same order and quoting as upstream. The removal step still reads env.qr_code_provider, as upstream did.
+- Both comment steps now end the multi-line `content` output with a delimiter made fresh on each run from /dev/urandom, instead of a fixed `EOF`. The comment text itself is written unchanged, line breaks included.
 
-2. action.yml - 'Generate comment content for deployment': Moved all 8 ${{ }} expressions to env: block with GC_ prefix (GC_ACTION_REPOSITORY, GC_ACTION_VERSION, GC_PREVIEW_URL, GC_PREVIEW_BRANCH, GC_SERVER_URL, GC_DEPLOY_REPOSITORY, GC_ACTION_START_TIME, GC_QR_CODE).
-
-3. action.yml - 'Wait for preview removal on GitHub Pages': Same fix as #1 but for removal step, using WAIT_REMOVED_SHA.
-
-4. action.yml - 'Generate comment content for removal': Same fix as #2 but for removal step, using GC_QR_CODE_PROVIDER for env.qr_code_provider.
-
-5. lib/main.sh - Added sanitization of all values written to $GITHUB_ENV and $GITHUB_OUTPUT using printf '%s' "$VAR" | tr -d '\n\r' to prevent newline injection attacks from attacker-controlled inputs.
-
-### Iteration 2
-
-**Fixes applied:** github-env-injection
-
-**Notes:**
-
-Fixed both 'Generate comment content for deployment' (line 175) and 'Generate comment content for removal' (line 250) steps in action.yml. Replaced the static `EOF` heredoc delimiter used when writing to $GITHUB_OUTPUT with a randomly-generated delimiter: `DELIM="EOF_$(openssl rand -hex 16)"`. This prevents an attacker from injecting arbitrary key=value pairs into $GITHUB_OUTPUT by crafting user-controlled inputs (preview-branch, deploy-repository, qr-code) that contain a newline followed by a line matching the delimiter.
+**lib/main.sh**
+- Added a small `sanitize` helper (`printf '%s' | tr -d '\n\r'`). It strips line breaks from deployment_action, preview_file_path, pages_base_url, preview_url_path, preview_url, action_repository, action_version, action_start_time and action_start_timestamp before they are written to GITHUB_ENV and GITHUB_OUTPUT.
+- The cleaning runs on values already stored in variables, not around a command, so a failing command can't be silently hidden by it.
 

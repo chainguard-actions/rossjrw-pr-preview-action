@@ -36,15 +36,18 @@ action_start_timestamp=$(date '+%s')
 action_start_time=$(date '+%Y-%m-%d %H:%M %Z')
 
 # Sanitize values that may come from user-controlled inputs before writing to GITHUB_ENV/GITHUB_OUTPUT
-safe_pages_base_url=$(printf '%s' "$pages_base_url" | tr -d '\n\r')
-safe_preview_url_path=$(printf '%s' "$preview_url_path" | tr -d '\n\r')
-safe_preview_url=$(printf '%s' "https://$pages_base_url/$preview_url_path/" | tr -d '\n\r')
-safe_action_repository=$(printf '%s' "$action_repository" | tr -d '\n\r')
-safe_action_version=$(printf '%s' "$action_version" | tr -d '\n\r')
-safe_action_start_time=$(printf '%s' "$action_start_time" | tr -d '\n\r')
-safe_action_start_timestamp=$(printf '%s' "$action_start_timestamp" | tr -d '\n\r')
-safe_deployment_action=$(printf '%s' "$deployment_action" | tr -d '\n\r')
-safe_preview_file_path=$(printf '%s' "$preview_file_path" | tr -d '\n\r')
+sanitize() {
+    printf '%s' "$1" | tr -d '\n\r'
+}
+safe_pages_base_url=$(sanitize "$pages_base_url")
+safe_preview_url_path=$(sanitize "$preview_url_path")
+safe_preview_url=$(sanitize "https://$pages_base_url/$preview_url_path/")
+safe_action_repository=$(sanitize "$action_repository")
+safe_action_version=$(sanitize "$action_version")
+safe_action_start_time=$(sanitize "$action_start_time")
+safe_action_start_timestamp=$(sanitize "$action_start_timestamp")
+safe_deployment_action=$(sanitize "$deployment_action")
+safe_preview_file_path=$(sanitize "$preview_file_path")
 
 # Export variables for later use by this action
 {
